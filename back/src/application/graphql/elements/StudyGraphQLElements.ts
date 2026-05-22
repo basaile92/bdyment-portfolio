@@ -1,4 +1,4 @@
-import { gql } from 'apollo-server-lambda';
+import { gql } from 'graphql-tag';
 import { GraphQLElements } from './GraphQLElements';
 import { StudyService } from '../../../domain/service/StudyService';
 

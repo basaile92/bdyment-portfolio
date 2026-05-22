@@ -1,4 +1,5 @@
-import { ApolloServer } from 'apollo-server-lambda';
+import { ApolloServer } from '@apollo/server';
+import { startServerAndCreateLambdaHandler, handlers } from '@as-integrations/aws-lambda';
 import { JsonPortfolioDataRetrieverAdapter } from '../../infrastructure/adapter/JsonPortfolioDataRetrieverAdapter';
 import { BaseGraphQLElements } from '../graphql/elements/BaseGraphQLElements';
 import { AvailabilityGraphQLElements } from '../graphql/elements/AvailabilityGraphQLElements';
@@ -54,6 +55,11 @@ export const buildGraphQLElementsList = () => {
     studyGraphQLElements,
   ];
 };
+
 const schemaBuilder = new SchemaBuilder(buildGraphQLElementsList());
 const server = new ApolloServer(schemaBuilder.build());
-export const handler = server.createHandler();
+
+export const handler = startServerAndCreateLambdaHandler(
+  server,
+  handlers.createAPIGatewayProxyEventRequestHandler(),
+);
