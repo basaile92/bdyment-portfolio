@@ -1,0 +1,18 @@
+node_modules/
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# build outputs
+front/build/
+back/dist/
+infra/cdk.out/
+infra/lib/**/*.js
+infra/lib/**/*.d.ts
+infra/bin/**/*.js
+infra/bin/**/*.d.ts
+
+# env
+.env
+.env.local

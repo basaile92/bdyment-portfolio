@@ -1,0 +1,108 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans',
+    'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #14190f;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+}
+
+.fit-window {
+  height: 100vh;
+  width: 100vw;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+@font-face {
+  font-family: 'UbuntuMono-Bold';
+  src:
+    local('UbuntuMono-Bold'),
+    url('application/fonts/UbuntuMono-Bold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'UbuntuMono-BoldItalic';
+  src:
+    local('UbuntuMono-BoldItalic'),
+    url('application/fonts/UbuntuMono-BoldItalic.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'UbuntuMono-Italic';
+  src:
+    local('UbuntuMono-Italic'),
+    url('application/fonts/UbuntuMono-Italic.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'UbuntuMono-Regular';
+  src:
+    local('UbuntuMono-Regular'),
+    url('application/fonts/UbuntuMono-Regular.ttf') format('truetype');
+}
+
+.title {
+  font-weight: bolder;
+  color: rgba(61, 134, 203, 0.9);
+}
+
+.italic {
+  font-style: italic;
+}
+
+.second-italic {
+  font-style: italic;
+  color: rgba(61, 134, 203, 0.9);
+}
+
+.link {
+  color: rgba(61, 134, 203, 0.9);
+  text-decoration: underline;
+  z-index: 3;
+  user-select: auto;
+}
+
+.label {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.important-value {
+  font-weight: bold;
+  color: rgba(61, 134, 203, 0.9);
+}
+
+.native {
+  font-weight: bold;
+  color: green;
+}
+
+.fluent {
+  font-weight: bold;
+  color: yellow;
+}
+
+.beginner {
+  font-weight: bold;
+  color: #d73c3c;
+}
+
+.subject {
+  font-weight: bold;
+}
+
+.parameter {
+  font-weight: bold;
+  color: rgba(61, 134, 203, 0.9);
+}
+
+.error {
+  font-weight: bold;
+  color: red;
+}

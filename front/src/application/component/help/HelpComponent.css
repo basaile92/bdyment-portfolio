@@ -1,0 +1,53 @@
+.help-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  position: fixed;
+  background: rgba(255, 255, 255, 1);
+  z-index: 6;
+  top: 2.4em;
+  right: 0;
+  width: 30%;
+  min-width: 300px;
+  padding: 2px;
+  font-family: UbuntuMono-Regular, serif;
+}
+
+.help-content {
+  color: black;
+  padding: 2em;
+}
+
+.key {
+  font-weight: bold;
+}
+
+.help-line {
+  margin-top: 1em;
+}
+
+.help-underline {
+  margin-top: 0.2em;
+}
+
+.title-help {
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+.code {
+  font-style: italic;
+  font-weight: bold;
+}
+
+.panel-close {
+  font-size: 20px;
+  font-weight: normal;
+  width: min-content;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin: 2%;
+  text-decoration: none;
+  color: black;
+  justify-self: end;
+}

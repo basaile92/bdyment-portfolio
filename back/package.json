@@ -1,0 +1,25 @@
+{
+  "name": "bdyment-portfolio-back",
+  "version": "1.0.83",
+  "private": true,
+  "main": "lambda",
+  "type": "module",
+  "scripts": {
+    "test": "jest",
+    "format": "npx prettier --write .",
+    "transpile": "tsup"
+  },
+  "dependencies": {
+    "apollo-server-lambda": "3.13.0",
+    "graphql": "16.8.1"
+  },
+  "devDependencies": {
+    "@jest/globals": "29.7.0",
+    "@types/jest": "^29.5.12",
+    "arch-unit-ts": "^1.0.7",
+    "jest": "^29.7.0",
+    "prettier": "3.2.5",
+    "ts-jest": "^29.1.2",
+    "tsup": "^8.0.2"
+  }
+}

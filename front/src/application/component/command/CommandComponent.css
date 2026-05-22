@@ -1,0 +1,9 @@
+.command-container {
+  display: flex;
+  flex-direction: row;
+}
+
+.subject {
+  color: white;
+  font-family: UbuntuMono-Regular, serif;
+}

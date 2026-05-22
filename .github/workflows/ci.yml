@@ -1,0 +1,142 @@
+name: CI / Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      front: ${{ steps.filter.outputs.front }}
+      back: ${{ steps.filter.outputs.back }}
+      infra: ${{ steps.filter.outputs.infra }}
+      workflow: ${{ steps.filter.outputs.workflow }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            front:
+              - 'front/**'
+            back:
+              - 'back/**'
+            infra:
+              - 'infra/**'
+            workflow:
+              - '.github/workflows/**'
+
+  front:
+    name: Front (test + build)
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.front == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: front
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+      - run: npm ci
+      - run: npm test -- --watchAll=false
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: front-build
+          path: front/build
+          retention-days: 7
+          if-no-files-found: error
+
+  back:
+    name: Back (test + transpile)
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.back == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: back
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: back/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run transpile
+      - name: Stage prod deps into dist
+        run: |
+          cp package.json package-lock.json dist/
+          cp -r node_modules dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: back-dist
+          path: back/dist
+          retention-days: 7
+          if-no-files-found: error
+
+  infra-test:
+    name: Infra (synth check)
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test --if-present
+
+  deploy:
+    name: Deploy (CDK)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [front, back, infra-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+      - name: Download front build
+        uses: actions/download-artifact@v4
+        with:
+          name: front-build
+          path: front/build
+      - name: Download back dist
+        uses: actions/download-artifact@v4
+        with:
+          name: back-dist
+          path: back/dist
+      - name: Install infra deps
+        working-directory: infra
+        run: npm ci
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: CDK deploy
+        working-directory: infra
+        run: npx cdk deploy --all --require-approval never

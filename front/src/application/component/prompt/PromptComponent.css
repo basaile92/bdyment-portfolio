@@ -1,0 +1,26 @@
+.prompt-container {
+  display: flex;
+  flex-direction: row;
+}
+
+.prompt {
+  color: white;
+  font-family: UbuntuMono-Regular, serif;
+  border: none;
+  background-color: transparent;
+  outline: none;
+  resize: none;
+  caret-shape: block;
+  cursor: default;
+  width: 100%;
+  font-size: 1em;
+  padding: 0 0 0 0;
+}
+
+.textarea-hidder {
+  position: absolute;
+}
+
+textarea::selection {
+  background-color: transparent;
+}
