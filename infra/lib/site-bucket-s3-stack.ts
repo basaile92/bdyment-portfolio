@@ -12,15 +12,35 @@ export class SiteBucketS3Stack extends cdk.Stack {
 
         // Créer un bucket public et entrer l'ARN en dessous (policy publique)
         const siteBucket = aws_s3.Bucket.fromBucketArn(this, "BdymentPortfolioFrontBucket", 'arn:aws:s3:::bdyment-portfolio-front-bucket')
-        new aws_s3_deployment.BucketDeployment(this, "BdymentPortfolioFrontDeployment", {
-            sources: [
-                aws_s3_deployment.Source.asset(path.join(__dirname, "../../front/build")),
-                aws_s3_deployment.Source.asset(path.join(__dirname, "../asset")),
-                // "Le Casse", the heist game: its build already sits in a heist/ folder, so it lands at bdyment.com/heist/
-                aws_s3_deployment.Source.asset(path.join(__dirname, "../../heist/dist-portfolio")),
-            ],
+        const sources = [
+            aws_s3_deployment.Source.asset(path.join(__dirname, "../../front/build")),
+            aws_s3_deployment.Source.asset(path.join(__dirname, "../asset")),
+            // "Le Casse", the heist game: its build already sits in a heist/ folder, so it lands at bdyment.com/heist/
+            aws_s3_deployment.Source.asset(path.join(__dirname, "../../heist/dist-portfolio")),
+        ];
+        const pages = ["index.html", "*/index.html", "*.webmanifest", "*/*.webmanifest", "manifest.json"];
+
+        // Bundles, CV, icons: never pruned, so a page still cached somewhere keeps finding the bundle
+        // it points to after a deploy. One day of browser cache (the CV can change; bundles are hashed).
+        const assetsDeployment = new aws_s3_deployment.BucketDeployment(this, "BdymentPortfolioFrontDeployment", {
+            sources,
             destinationBucket: siteBucket,
+            exclude: pages,
+            prune: false,
+            cacheControl: [aws_s3_deployment.CacheControl.fromString("public, max-age=86400")],
         });
+
+        // Pages point to the current bundles: browsers and CloudFront must always revalidate them.
+        const pagesDeployment = new aws_s3_deployment.BucketDeployment(this, "BdymentPortfolioPagesDeployment", {
+            sources,
+            destinationBucket: siteBucket,
+            exclude: ["*"],
+            include: pages,
+            prune: false,
+            cacheControl: [aws_s3_deployment.CacheControl.noCache()],
+        });
+        // Pages only go live once the bundles they reference are uploaded.
+        pagesDeployment.node.addDependency(assetsDeployment);
 
         const cloudfrontOriginAccessIdentity =
             new aws_cloudfront.OriginAccessIdentity(

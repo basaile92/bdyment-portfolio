@@ -30,13 +30,15 @@
   const board = $derived(game.heist.puzzle.board);
   const view = $derived(viewSize(board));
   /** The room is sized from BOTH dimensions available, so the whole screen always fits. */
-  const unit = $derived(Math.max(0, Math.min(areaWidth / view.width, areaHeight / view.height)));
   /**
    * The frame (8 px padding + 3 px border) is drawn INSIDE the svg, so the emitters'
    * press animation paints over the border instead of being clipped under it (WebKit).
    */
   const FRAME_PAD = 8;
   const FRAME_EDGE = 3;
+  /** The whole frame (border included) fits the area, so it never spills over the screen edge or the gauge. */
+  const FRAME = 2 * (FRAME_PAD + FRAME_EDGE);
+  const unit = $derived(Math.max(0, Math.min((areaWidth - FRAME) / view.width, (areaHeight - FRAME) / view.height)));
   const margin = $derived(unit > 0 ? (FRAME_PAD + FRAME_EDGE) / unit : 0);
   const edgeWidth = $derived(unit > 0 ? FRAME_EDGE / unit : 0);
   const plan = $derived(game.heist.plan);

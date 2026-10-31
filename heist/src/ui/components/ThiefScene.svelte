@@ -66,6 +66,10 @@
 
 <style>
   .scene { display: flex; flex-direction: column; gap: 6px; padding: 4px 12px 0; }
+  /* Phones: no thief or bubble, the room gets the space (messages float over it, see SpeechToast). */
+  @media not all and (min-aspect-ratio: 1/1) and (min-width: 640px) {
+    .top { display: none !important; }
+  }
   .top { position: relative; display: flex; gap: 12px; align-items: flex-start; min-height: 66px; }
   .thief { flex: none; width: 60px; margin-left: 20px; }
   .thief { position: relative; }

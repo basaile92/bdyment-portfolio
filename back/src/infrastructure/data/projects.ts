@@ -1,5 +1,100 @@
 export const projects = [
   {
+    name: 'Le Casse',
+    websites: ['https://bdyment.com/heist/'],
+    role: 'Game designer and developer',
+    description:
+      'Independent design and development of "Le Casse", a solo laser deduction game for mobile and browser, playable on this site with the heist command. Five jewels are hidden in a museum room: the player fires lasers from the walls, reads how they bounce and change colour, then draws the jewels edge by edge.\n- Front-end in TypeScript and Svelte 5 built with Vite, the room drawn in SVG, sounds synthesised with the Web Audio API, installable as a PWA and packaged for iOS and Android with Capacitor. \n- Clean Architecture (domain, use cases, ports, adapters, UI) with the dependency rule enforced by ESLint, unit tests with Vitest and end-to-end checks with Playwright. \n- Daily heist identical for every player without a back-end (seeded generation), training rooms, star scoring, French and English. \n- Vibe-coded with Claude (Anthropic): I directed the game design, the rules and every UI/UX decision in conversation, while Claude and Claude Code agents wrote the code, ran the UI/UX audits and handled the architecture. \n- Deployed on AWS S3 and Cloudfront with AWS CDK and Github Actions, alongside this portfolio.',
+    startYear: 2026,
+    endYear: 2026,
+    skills: [
+      {
+        name: 'Typescript',
+        category: 'Front-end',
+      },
+      {
+        name: 'Svelte',
+        category: 'Front-end',
+      },
+      {
+        name: 'Vite',
+        category: 'Front-end',
+      },
+      {
+        name: 'SVG',
+        category: 'Front-end',
+      },
+      {
+        name: 'Web Audio API',
+        category: 'Front-end',
+      },
+      {
+        name: 'PWA',
+        category: 'Front-end',
+      },
+      {
+        name: 'Capacitor',
+        category: 'Front-end',
+      },
+      {
+        name: 'Clean architecture',
+        category: 'Software-craftmanship',
+      },
+      {
+        name: 'Clean code',
+        category: 'Software-craftmanship',
+      },
+      {
+        name: 'Vitest',
+        category: 'Software-craftmanship',
+      },
+      {
+        name: 'Playwright',
+        category: 'Software-craftmanship',
+      },
+      {
+        name: 'ESLint',
+        category: 'Software-craftmanship',
+      },
+      {
+        name: 'AWS S3',
+        category: 'Ops-tools',
+      },
+      {
+        name: 'AWS Cloudfront',
+        category: 'Ops-tools',
+      },
+      {
+        name: 'AWS CDK',
+        category: 'Ops-tools',
+      },
+      {
+        name: 'Github Actions',
+        category: 'Ops-tools',
+      },
+      {
+        name: 'Git',
+        category: 'Versioning-tools',
+      },
+      {
+        name: 'Claude',
+        category: 'AI-tools',
+      },
+      {
+        name: 'Claude Code',
+        category: 'AI-tools',
+      },
+      {
+        name: 'Vibe coding',
+        category: 'AI-tools',
+      },
+      {
+        name: 'Game design',
+        category: 'Videogame-development',
+      },
+    ],
+  },
+  {
     name: 'My portfolio',
     websites: [
       'https://bdyment.com',
