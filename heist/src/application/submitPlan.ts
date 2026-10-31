@@ -1,11 +1,11 @@
-import { mismatchingPorts, recognizedJewels, starsFor, type PortId, type Stars } from '../domain';
-import { alarmLevel, withAlarmChecked, type HeistState } from './HeistState';
+import { mismatchingPorts, recognizedJewels, type PortId } from '../domain';
+import { alarms, withAlarmChecked, type HeistState } from './HeistState';
 
 export type SubmitResult =
   | { readonly kind: 'empty-plan'; readonly state: HeistState }
   | { readonly kind: 'alarm'; readonly state: HeistState; readonly mismatches: readonly PortId[] }
   | { readonly kind: 'caught'; readonly state: HeistState }
-  | { readonly kind: 'success'; readonly state: HeistState; readonly stars: Stars };
+  | { readonly kind: 'success'; readonly state: HeistState; readonly alarms: number };
 
 /** How many jewels of the heist are not yet drawn as closed shapes in the plan. */
 export function missingJewels(state: HeistState): number {
@@ -22,5 +22,5 @@ export function submitPlan(state: HeistState): SubmitResult {
     return next.status === 'caught' ? { kind: 'caught', state: next } : { kind: 'alarm', state: next, mismatches };
   }
   const won: HeistState = { ...state, status: 'success', mismatches: [] };
-  return { kind: 'success', state: won, stars: starsFor(alarmLevel(won), state.thresholds, state.wrongPlans) };
+  return { kind: 'success', state: won, alarms: alarms(won) };
 }

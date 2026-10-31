@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_BOARD, EMPTY_SURFACES, generatePuzzle, HEIST_JEWELS, mismatchingPorts, planMatches, starsFor,
-  starThresholds,
+  DEFAULT_BOARD, EMPTY_SURFACES, generatePuzzle, HEIST_JEWELS, mismatchingPorts, planMatches, alarmFor,
+  alarmThresholds,
 } from '../../src/domain';
 import { seeded } from '../helpers';
 
@@ -15,14 +15,16 @@ describe('plan validation', () => {
   });
 });
 
-describe('stars', () => {
-  const t = starThresholds(DEFAULT_BOARD, puzzle.surfaces, 5);
+describe('alarm level', () => {
+  const t = alarmThresholds(DEFAULT_BOARD, puzzle.surfaces, 5);
 
-  it('needs fewer shots for 3 stars than for 2', () => expect(t.threeStars).toBeLessThan(t.twoStars));
+  it('stays quiet for fewer tests than it takes to light every sensor', () => expect(t.quiet).toBeLessThan(t.all));
 
-  it('grades by shots', () => {
-    expect(starsFor(t.threeStars, t)).toBe(3);
-    expect(starsFor(t.threeStars + 1, t)).toBe(2);
-    expect(starsFor(t.twoStars + 1, t)).toBe(1);
+  it('goes up one level past the quiet limit, and one per wrong plan, up to 3', () => {
+    expect(alarmFor(t.quiet, t, 0)).toBe(0);
+    expect(alarmFor(t.quiet + 1, t, 0)).toBe(1);
+    expect(alarmFor(t.quiet, t, 2)).toBe(2);
+    expect(alarmFor(t.quiet + 1, t, 2)).toBe(3);
+    expect(alarmFor(t.all, t, 3)).toBe(3);
   });
 });

@@ -1,4 +1,4 @@
-import { MAX_WRONG_PLANS, type ColorMask, type JewelSpec, type PortId, type Puzzle, type StarThresholds, type SurfaceMap } from '../domain';
+import { alarmFor, MAX_ALARM, type AlarmThresholds, type ColorMask, type JewelSpec, type PortId, type Puzzle, type SurfaceMap } from '../domain';
 
 export interface Shot {
   readonly entry: PortId;
@@ -13,9 +13,9 @@ export type HeistStatus = 'planning' | 'success' | 'caught';
 export interface HeistState {
   readonly puzzle: Puzzle;
   readonly jewels: readonly JewelSpec[];
-  readonly thresholds: StarThresholds;
+  readonly thresholds: AlarmThresholds;
   readonly shots: readonly Shot[];
-  /** Plans submitted while wrong: each costs a star, MAX_WRONG_PLANS of them get the thief caught. */
+  /** Plans submitted while wrong: each raises the alarm by one level. */
   readonly wrongPlans: number;
   /** The player's drawing. */
   readonly plan: SurfaceMap;
@@ -26,23 +26,23 @@ export interface HeistState {
   readonly status: HeistStatus;
 }
 
-export function alarmLevel(state: HeistState): number {
+/** Tests fired so far. */
+export function testsUsed(state: HeistState): number {
   return state.shots.length;
 }
 
-/** Past this level the guard arrives and the heist fails. */
-export function alarmLimit(state: HeistState): number {
-  return state.thresholds.twoStars;
+/** Tests that light every sensor: the end of the gauge. */
+export function testsLimit(state: HeistState): number {
+  return state.thresholds.all;
 }
 
-/** Why the guard showed up, if he did. */
-export function caughtBy(state: HeistState): 'alarm' | 'wrong-plans' | null {
-  if (state.wrongPlans >= MAX_WRONG_PLANS) return 'wrong-plans';
-  return alarmLevel(state) > alarmLimit(state) ? 'alarm' : null;
+/** Alarm level, 0 (perfect) to MAX_ALARM (the guard arrives). */
+export function alarms(state: HeistState): number {
+  return alarmFor(state.shots.length, state.thresholds, state.wrongPlans);
 }
 
 export function withAlarmChecked(state: HeistState): HeistState {
-  return state.status === 'planning' && caughtBy(state) !== null ? { ...state, status: 'caught' } : state;
+  return state.status === 'planning' && alarms(state) >= MAX_ALARM ? { ...state, status: 'caught' } : state;
 }
 
 /** The shot that lit a port, whether the port was its entry or its exit. */

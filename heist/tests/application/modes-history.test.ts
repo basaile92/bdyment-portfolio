@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  alarmLimit, dailySeed, dayOf, drawSurface, EMPTY_HISTORY, fireLaser, jewelsFor, missingJewels, previousDay,
+  testsLimit, dailySeed, dayOf, drawSurface, EMPTY_HISTORY, fireLaser, jewelsFor, missingJewels, previousDay,
   recordCaught, recordHeist, redo, resetProgress, untilNextDay, remember, startHeist, submitPlan, undo,
 } from '../../src/application';
 import { SeededRandom } from '../../src/adapters/SeededRandom';
@@ -34,7 +34,7 @@ describe('the alarm limit', () => {
   it('never gets the thief caught for testing every emitter', () => {
     let s = startHeist(new SeededRandom(5));
     for (let p = 0; p < 36; p++) s = fireLaser(s, p).state;
-    expect(s.shots.length).toBeLessThanOrEqual(alarmLimit(s));
+    expect(s.shots.length).toBeLessThanOrEqual(testsLimit(s));
     expect(s.status).toBe('planning');
   });
 
@@ -83,14 +83,14 @@ describe('progress', () => {
     expect(store.value.heistsWon).toBe(3);
   });
 
-  it('resets the progress but keeps the settings', async () => {
+  it('resets everything, settings included, as on a first launch', async () => {
     const store = new MemoryStore();
-    await recordHeist(store, 3, { kind: 'daily', day: '2026-10-31' });
-    store.value = { ...store.value, settings: { sound: false } };
+    await recordHeist(store, 0, { kind: 'daily', day: '2026-10-31' });
+    store.value = { ...store.value, settings: { sound: false, language: 'en', symbols: true } };
     const p = await resetProgress(store);
     expect(p.heistsWon).toBe(0);
     expect(p.lastDailyPlayed).toBeNull();
-    expect(p.settings.sound).toBe(false);
+    expect(p.settings).toEqual({ sound: true });
   });
 
   it('marks the daily heist as played, won or caught, but not a free one', async () => {

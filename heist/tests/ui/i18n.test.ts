@@ -15,12 +15,12 @@ describe('languages', () => {
   it('describes a mix in English', () => expect(laserDescription(maskOf('red', 'blue'), en)).toBe('purple (red + blue)'));
 
   it('handles plurals per language', () => {
-    expect(en.speech.alarm(1)).toContain('1 sensor doesn');
-    expect(fr.speech.alarm(3)).toContain('3 capteurs ne collent');
+    expect(en.tests(1)).toContain('test');
+    expect(fr.trainingJewels(3)).toBe('3 joyaux');
   });
 
   it('turns **stars** into bold parts', () => {
-    expect(speak({ kind: 'intro' }, en).filter((p) => p.strong).map((p) => p.text)).toEqual(['emitter']);
+    expect(speak({ kind: 'intro' }, en).filter((p) => p.strong).map((p) => p.text)).toEqual(['torch']);
   });
 
   it('picks French for French browsers, English otherwise', () => {

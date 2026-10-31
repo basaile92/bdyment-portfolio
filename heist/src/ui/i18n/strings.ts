@@ -50,8 +50,8 @@ export interface Strings {
     readonly shot: (n: number, back: boolean) => string;
     readonly cleared: string;
     readonly emptyPlan: string;
-    readonly alarm: (mismatches: number) => string;
-    readonly triesLeft: (left: number) => string;
+    readonly alarm: string;
+    readonly alarmUp: (level: number) => string;
     readonly caught: string;
     readonly successLead: string;
     readonly successRest: string;
@@ -69,9 +69,9 @@ export interface Strings {
 
   readonly gaugeLabel: string;
   readonly tests: (n: number) => string;
-  readonly threeStarsUpTo: (n: number) => string;
-  readonly starsHint: string;
-  readonly wrongPlans: (n: number) => string;
+  readonly quietUntil: (n: number) => string;
+  readonly alarmHint: string;
+  readonly alarmLevel: (n: number) => string;
 
   readonly loot: string;
   readonly lootLabel: (found: number, total: number) => string;
@@ -106,21 +106,18 @@ export interface Strings {
   readonly goAnyway: string;
 
   readonly winTitle: string;
-  readonly winStarsLabel: (stars: number) => string;
-  readonly winText: (tests: number, three: number, two: number) => string;
-  readonly winWrong: (wrong: number) => string;
-  readonly winNoStars: string;
+  readonly winAlarmLabel: (level: number) => string;
+  readonly winText: (tests: number, level: number) => string;
+  readonly winVerdict: (level: number) => string;
   readonly streakLine: (streak: number, nextIn: string) => string;
   readonly copied: string;
   readonly copyResult: string;
   readonly seeRoom: string;
   readonly caughtTitle: string;
-  readonly caughtWrong: string;
-  readonly caughtAlarm: (limit: number) => string;
-  readonly caughtRest: (daily: boolean) => string;
+  readonly caughtText: (daily: boolean) => string;
   readonly caughtDaily: (nextIn: string) => string;
   readonly shareLabel: (dayMonthYear: string | null) => string;
-  readonly shareText: (label: string, stars: string, tests: number, wrong: number) => string;
+  readonly shareText: (label: string, lamps: string, tests: number, level: number) => string;
   readonly duration: (hours: number, minutes: number) => string;
 
   readonly menuTitle: string;
@@ -139,6 +136,9 @@ export interface Strings {
 
   readonly settingsTitle: string;
   readonly sound: string;
+  readonly symbols: string;
+  readonly symbolsSub: string;
+  readonly helpSymbols: string;
   readonly soundSub: string;
   readonly language: string;
   readonly resetTitle: string;
@@ -149,6 +149,8 @@ export interface Strings {
   readonly close: string;
 
   readonly helpTitle: string;
+  readonly helpGoal: string;
+  readonly helpGoalText: string;
   readonly helpTest: string;
   readonly helpTestText: string;
   readonly helpWalls: string;
@@ -158,7 +160,10 @@ export interface Strings {
   readonly helpColorsText: string;
   readonly helpDraw: string;
   readonly helpDrawText: string;
-  readonly helpStars: string;
-  readonly helpStarsText: string;
+  readonly helpAlarm: string;
+  readonly helpAlarmText: string;
   readonly gotIt: string;
+  readonly previous: string;
+  readonly next2: string;
+  readonly helpPage: (page: number, total: number) => string;
 }

@@ -2,6 +2,7 @@
   import type { GameController } from '../GameController.svelte';
   import LanguagePicker from './LanguagePicker.svelte';
   import Modal from './Modal.svelte';
+  import SymbolsSwitch from './SymbolsSwitch.svelte';
 
   let { game }: { game: GameController } = $props();
   const s = $derived(game.s);
@@ -23,6 +24,7 @@
     <span><strong>{s.sound}</strong><small>{s.soundSub}</small></span>
     <input type="checkbox" checked={game.settings.sound} onchange={(e) => game.updateSettings({ sound: e.currentTarget.checked })} />
   </label>
+  <SymbolsSwitch {game} />
   <div class="reset">
     <span><strong>{s.resetTitle}</strong><small>{armed ? s.resetSure : s.resetSub}</small></span>
     {#if armed}

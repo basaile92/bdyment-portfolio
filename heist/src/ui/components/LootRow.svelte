@@ -16,7 +16,7 @@
     {#each game.heist.jewels as j, i (i)}
       <li class:found={game.recognized[i]} title={game.s.jewelNamed(game.s.colors[j.color])}>
         <JewelIcon cells={j.shape.cells} color={JEWEL_HEX[j.color]} />
-        <svg class="glyph" viewBox="0 0 1 1" width="12" height="12" aria-hidden="true"><Glyph glyph={GLYPH[j.color]} x={0.5} y={0.5} size={0.9} fill={JEWEL_HEX[j.color]} /></svg>
+        {#if game.symbols}<svg class="glyph" viewBox="0 0 1 1" width="12" height="12" aria-hidden="true"><Glyph glyph={GLYPH[j.color]} x={0.5} y={0.5} size={0.9} fill={JEWEL_HEX[j.color]} /></svg>{/if}
         {#if game.recognized[i]}<span class="tick"><UiIcon name="check" size={12} /></span>{/if}
       </li>
     {/each}

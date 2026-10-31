@@ -1,4 +1,3 @@
-import type { Stars } from '../domain';
 import { NO_PROGRESS, type Progress, type ProgressStore, type Settings } from '../ports/ProgressStore';
 import { previousDay, type HeistMode } from './modes';
 
@@ -11,9 +10,10 @@ function afterWin(p: Progress, mode: HeistMode): Progress {
 
 const played = (p: Progress, mode: HeistMode): Progress => (mode.kind === 'daily' ? { ...p, lastDailyPlayed: mode.day } : p);
 
-export async function recordHeist(store: ProgressStore, stars: Stars, mode: HeistMode): Promise<Progress> {
+/** A won heist; `alarms` = alarm level reached (0 = perfect). */
+export async function recordHeist(store: ProgressStore, alarms: number, mode: HeistMode): Promise<Progress> {
   const p = await store.load();
-  const counted: Progress = { ...p, heistsWon: p.heistsWon + 1, perfectHeists: p.perfectHeists + (stars === 3 ? 1 : 0) };
+  const counted: Progress = { ...p, heistsWon: p.heistsWon + 1, perfectHeists: p.perfectHeists + (alarms === 0 ? 1 : 0) };
   const next = played(afterWin(counted, mode), mode);
   await store.save(next);
   return next;
@@ -32,9 +32,9 @@ export async function saveSettings(store: ProgressStore, settings: Settings): Pr
   return next;
 }
 
-/** Forget every heist, streak and finished daily; the player's settings stay. */
+/** Back to a first launch: progress and settings (language, symbols, sound) are all forgotten. */
 export async function resetProgress(store: ProgressStore): Promise<Progress> {
-  const next: Progress = { ...NO_PROGRESS, settings: (await store.load()).settings };
+  const next: Progress = NO_PROGRESS;
   await store.save(next);
   return next;
 }

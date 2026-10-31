@@ -2,18 +2,16 @@ import { allPorts, type BoardSize } from './board';
 import { traceLaser } from './laser';
 import type { SurfaceMap } from './surfaces';
 
-export interface StarThresholds {
-  /** At most this many shots for 3 stars. */
-  readonly threeStars: number;
-  /** At most this many shots for 2 stars (= shots needed to light every port). */
-  readonly twoStars: number;
+export interface AlarmThresholds {
+  /** Up to this many tests, the alarm stays quiet; one more raises it by one level. */
+  readonly quiet: number;
+  /** Tests needed to light every sensor (firing them all always solves the room). */
+  readonly all: number;
 }
 
-export type Stars = 0 | 1 | 2 | 3;
-
-const THREE_STAR_RATIO = 0.6;
-/** Each wrong plan costs a star; this many and the guard arrives. */
-export const MAX_WRONG_PLANS = 3;
+const QUIET_RATIO = 0.6;
+/** At this alarm level the guard arrives: game over. */
+export const MAX_ALARM = 3;
 
 /** Distinct shots needed to light every port: firing them all always solves the room. */
 export function shotsToRevealAll(board: BoardSize, surfaces: SurfaceMap): number {
@@ -27,13 +25,15 @@ export function shotsToRevealAll(board: BoardSize, surfaces: SurfaceMap): number
   return shots;
 }
 
-export function starThresholds(board: BoardSize, surfaces: SurfaceMap, jewelCount: number): StarThresholds {
+export function alarmThresholds(board: BoardSize, surfaces: SurfaceMap, jewelCount: number): AlarmThresholds {
   const all = shotsToRevealAll(board, surfaces);
-  return { threeStars: Math.max(jewelCount + 2, Math.round(all * THREE_STAR_RATIO)), twoStars: all };
+  return { quiet: Math.max(jewelCount + 2, Math.round(all * QUIET_RATIO)), all };
 }
 
-/** Stars earned by the shots, minus one per wrong plan (down to zero: the loot, but no glory). */
-export function starsFor(shots: number, thresholds: StarThresholds, wrongPlans = 0): Stars {
-  const earned = shots <= thresholds.threeStars ? 3 : shots <= thresholds.twoStars ? 2 : 1;
-  return Math.max(0, earned - wrongPlans) as Stars;
+/**
+ * Alarm level, 0 to 3: one level for testing past the quiet limit, one per wrong plan.
+ * 0 is a perfect heist; 3 brings the guard.
+ */
+export function alarmFor(shots: number, thresholds: AlarmThresholds, wrongPlans: number): number {
+  return Math.min(MAX_ALARM, (shots > thresholds.quiet ? 1 : 0) + wrongPlans);
 }

@@ -9,7 +9,7 @@ export type Speech =
   | { readonly kind: 'shot'; readonly number: number; readonly shot: Shot; readonly tip?: string }
   | { readonly kind: 'cleared' }
   | { readonly kind: 'empty-plan' }
-  | { readonly kind: 'alarm'; readonly mismatches: number; readonly triesLeft: number }
+  | { readonly kind: 'alarm'; readonly level: number }
   | { readonly kind: 'caught' }
   | { readonly kind: 'success' };
 
@@ -44,7 +44,7 @@ export function speak(speech: Speech, s: Strings): SpeechPart[] {
     case 'empty-plan':
       return [{ text: say.emptyPlan, tone: 'bad' }];
     case 'alarm':
-      return [{ text: say.alarm(speech.mismatches), tone: 'bad' }, { text: ' ' }, { text: say.triesLeft(speech.triesLeft), strong: true }];
+      return [{ text: say.alarm, tone: 'bad' }, { text: ' ' }, { text: say.alarmUp(speech.level), strong: true }];
     case 'caught':
       return [{ text: say.caught, tone: 'bad' }];
     case 'success':

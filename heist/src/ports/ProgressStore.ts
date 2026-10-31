@@ -4,6 +4,8 @@ export interface Settings {
   readonly sound: boolean;
   /** Absent until the player picks one (first launch). */
   readonly language?: Language;
+  /** A shape per jewel colour, for players who tell colours apart poorly. Off unless chosen. */
+  readonly symbols?: boolean;
 }
 
 export interface Progress {

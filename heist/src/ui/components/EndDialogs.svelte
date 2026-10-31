@@ -2,12 +2,12 @@
   import type { GameController } from '../GameController.svelte';
   import UiIcon from './icons/UiIcon.svelte';
   import Modal from './Modal.svelte';
+  import AlarmLamps from './AlarmLamps.svelte';
   import Rich from './Rich.svelte';
 
   let { game }: { game: GameController } = $props();
 
   let copied = $state(false);
-  const stars = $derived(game.result ? '★'.repeat(game.result.stars) + '☆'.repeat(3 - game.result.stars) : '');
   const s = $derived(game.s);
 
   async function share() {
@@ -22,10 +22,9 @@
 
 <Modal open={game.dialog === 'win'} label={s.winTitle} onclose={() => (game.dialog = 'none')}>
   <h2>{s.winTitle}</h2>
-  <div class="stars" aria-label={s.winStarsLabel(game.result?.stars ?? 0)}>{stars}</div>
+  <div class="lamps"><AlarmLamps level={game.result?.alarms ?? 0} size={40} label={s.winAlarmLabel(game.result?.alarms ?? 0)} /></div>
   <p class="center">
-    <Rich text={s.winText(game.alarm, game.heist.thresholds.threeStars, game.limit)} />{#if game.wrongPlans > 0}{s.winWrong(game.wrongPlans)}{/if}.
-    {#if game.result?.stars === 0}<br />{s.winNoStars}{/if}
+    <Rich text={s.winText(game.tests, game.result?.alarms ?? 0)} /><br />{s.winVerdict(game.result?.alarms ?? 0)}
   </p>
   {#if game.mode.kind === 'daily'}
     <p class="center daily"><Rich text={s.streakLine(game.progress.dailyStreak, game.nextDailyIn())} /></p>
@@ -39,8 +38,9 @@
 
 <Modal open={game.dialog === 'caught'} label={s.caughtTitle} onclose={() => (game.dialog = 'none')}>
   <h2>{s.caughtTitle}</h2>
+  <div class="lamps"><AlarmLamps level={3} size={40} label={s.alarmLevel(3)} /></div>
   <p class="center">
-    {game.caughtBy === 'wrong-plans' ? s.caughtWrong : s.caughtAlarm(game.limit)}{s.caughtRest(game.mode.kind === 'daily')}
+    {s.caughtText(game.mode.kind === 'daily')}
   </p>
   {#if game.mode.kind === 'daily'}
     <p class="center daily"><Rich text={s.caughtDaily(game.nextDailyIn())} /></p>
@@ -53,7 +53,7 @@
 
 <style>
   .daily { font-size: 14px; color: var(--muted); }
-  .stars { font-size: 38px; letter-spacing: 6px; color: var(--gold); text-align: center; text-shadow: 0 0 14px rgba(255, 201, 60, 0.6); }
+  .lamps { display: flex; justify-content: center; }
   .center { text-align: center; }
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 </style>

@@ -1,4 +1,4 @@
-import { DEFAULT_BOARD, EMPTY_SURFACES, generatePuzzle, HEIST_JEWELS, starThresholds, type BoardSize, type JewelSpec } from '../domain';
+import { DEFAULT_BOARD, EMPTY_SURFACES, generatePuzzle, HEIST_JEWELS, alarmThresholds, type BoardSize, type JewelSpec } from '../domain';
 import type { RandomSource } from '../ports/RandomSource';
 import type { HeistState } from './HeistState';
 
@@ -14,7 +14,7 @@ export function startHeist(random: RandomSource, options: StartHeistOptions = {}
   return {
     puzzle,
     jewels,
-    thresholds: starThresholds(board, puzzle.surfaces, jewels.length),
+    thresholds: alarmThresholds(board, puzzle.surfaces, jewels.length),
     shots: [],
     wrongPlans: 0,
     plan: EMPTY_SURFACES,

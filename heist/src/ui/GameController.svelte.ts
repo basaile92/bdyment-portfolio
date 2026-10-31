@@ -1,9 +1,9 @@
 import {
-  alarmLevel, alarmLimit, caughtBy, untilNextDay, clearPlan, dailySeed, dayOf, drawSurface, EMPTY_HISTORY, fireLaser, jewelsFor, markEmpty,
+  alarms, testsLimit, testsUsed, untilNextDay, clearPlan, dailySeed, dayOf, drawSurface, EMPTY_HISTORY, fireLaser, jewelsFor, markEmpty,
   missingJewels, recordCaught, recordHeist, resetProgress, redo, remember, saveSettings, shotAt, startHeist, submitPlan, undo,
   type HeistMode, type HeistState, type PlanHistory, type Shot,
 } from '../application';
-import { MAX_WRONG_PLANS, recognizedJewels, type JewelColor, type PortId, type Stars, type Surface, type SurfaceKey } from '../domain';
+import { recognizedJewels, type JewelColor, type PortId, type Surface, type SurfaceKey } from '../domain';
 import type { Haptics } from '../ports/Haptics';
 import { NO_PROGRESS, type Progress, type ProgressStore, type Settings } from '../ports/ProgressStore';
 import type { RandomSource } from '../ports/RandomSource';
@@ -25,6 +25,12 @@ export interface GameDependencies {
 
 export type Dialog = 'none' | 'welcome' | 'help' | 'menu' | 'settings' | 'confirm-new' | 'confirm-clear' | 'confirm-go' | 'win' | 'caught';
 
+/** GO animation: drop out of the window, climb back, keep the face a moment. */
+const DIVE_MS = 650;
+const RISE_MS = 700;
+const MOOD_MS = 2200;
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 /** Two taps on emitters closer than this are treated as one (avoids paying a test for a slip). */
 const DOUBLE_TAP_MS = 350;
 const REVEAL_STEP_MS = 380;
@@ -41,26 +47,36 @@ export class GameController {
   progress = $state.raw<Progress>(NO_PROGRESS);
   selected = $state.raw<Shot | null>(null);
   flashed = $state.raw<Shot | null>(null);
-  result = $state.raw<{ stars: Stars } | null>(null);
+  result = $state.raw<{ alarms: number } | null>(null);
   tool = $state<Tool>('trace');
   color = $state<JewelColor>('red');
   speech = $state<Speech>({ kind: 'intro' });
   dialog = $state<Dialog>('none');
   alarmTick = $state(0);
+  /** GO: the thief drops below the window ('down'), then climbs back ('up') or, loot in hand, right out of the top ('escape'). */
+  dive = $state<'none' | 'down' | 'up' | 'escape'>('none');
+  /** The thief's face after a GO. */
+  mood = $state<'calm' | 'sad' | 'happy'>('calm');
   /** Number of jewels revealed by the victory sequence. */
   revealed = $state(0);
 
-  readonly alarm = $derived(alarmLevel(this.heist));
-  readonly limit = $derived(alarmLimit(this.heist));
-  readonly sirenOn = $derived(this.heist.wrongPlans > 0);
-  readonly wrongPlans = $derived(this.heist.wrongPlans);
-  readonly caughtBy = $derived(caughtBy(this.heist));
+  /** Tests fired so far, and how many light every sensor (end of the gauge). */
+  readonly tests = $derived(testsUsed(this.heist));
+  readonly limit = $derived(testsLimit(this.heist));
+  /** Alarm level, 0 (perfect) to 3 (the guard arrives). */
+  readonly alarms = $derived(alarms(this.heist));
+  readonly sirenOn = $derived(this.alarms > 0);
   readonly won = $derived(this.heist.status === 'success');
   readonly over = $derived(this.heist.status !== 'planning');
   readonly recognized = $derived(recognizedJewels(this.heist.puzzle.board, this.heist.plan, this.heist.jewels));
   readonly settings = $derived(this.progress.settings);
   get language(): Language {
     return this.progress.settings.language ?? this.deps.deviceLanguage;
+  }
+
+  /** Shapes doubling the colours (colour blindness): an option, off by default. */
+  get symbols(): boolean {
+    return this.progress.settings.symbols ?? false;
   }
 
   /** Every text of the interface, in the current language. */
@@ -113,6 +129,8 @@ export class GameController {
     this.flashed = null;
     this.result = null;
     this.revealed = 0;
+    this.dive = 'none';
+    this.mood = 'calm';
     this.dialog = 'none';
     this.tipsShown = [];
     this.speech = { kind: 'intro' };
@@ -234,7 +252,7 @@ export class GameController {
   }
 
   requestSubmit(): void {
-    if (this.over) return;
+    if (this.over || this.dive !== 'none') return;
     if (this.heist.plan.size > 0 && this.missing > 0) this.dialog = 'confirm-go';
     else void this.submit();
   }
@@ -242,15 +260,26 @@ export class GameController {
   async submit(): Promise<void> {
     this.dialog = 'none';
     const outcome = submitPlan(this.heist);
+    if (outcome.kind === 'empty-plan') {
+      this.speech = { kind: 'empty-plan' };
+      return;
+    }
+    // The thief drops through the roof; the verdict falls once he is out of sight.
+    this.dive = 'down';
+    await wait(DIVE_MS);
     this.heist = outcome.state;
-    if (outcome.kind === 'empty-plan') this.speech = { kind: 'empty-plan' };
-    else if (outcome.kind === 'alarm') this.alarmRang(outcome.mismatches.length);
+    this.mood = outcome.kind === 'success' ? 'happy' : 'sad';
+    this.dive = outcome.kind === 'success' ? 'escape' : 'up';
+    if (outcome.kind === 'alarm') this.alarmRang();
     else if (outcome.kind === 'caught') this.caught();
-    else await this.success(outcome.stars);
+    else await this.success(outcome.alarms);
+    await wait(RISE_MS);
+    if (this.dive === 'up') this.dive = 'none';
+    setTimeout(() => (this.mood = 'calm'), MOOD_MS);
   }
 
-  private alarmRang(mismatches: number): void {
-    this.speech = { kind: 'alarm', mismatches, triesLeft: MAX_WRONG_PLANS - this.heist.wrongPlans };
+  private alarmRang(): void {
+    this.speech = { kind: 'alarm', level: this.alarms };
     this.alarmTick++;
     this.deps.sound.play('alarm');
     this.deps.haptics.failure();
@@ -266,13 +295,13 @@ export class GameController {
     this.revealAll(() => (this.dialog = 'caught'));
   }
 
-  private async success(stars: Stars): Promise<void> {
+  private async success(level: number): Promise<void> {
     this.selected = null;
     this.speech = { kind: 'success' };
-    this.result = { stars };
+    this.result = { alarms: level };
     this.deps.sound.play('success');
     this.deps.haptics.success();
-    this.progress = await recordHeist(this.deps.progress, stars, this.mode);
+    this.progress = await recordHeist(this.deps.progress, level, this.mode);
     this.revealAll(() => (this.dialog = 'win'));
   }
 
@@ -288,9 +317,10 @@ export class GameController {
   }
 
   shareText(): string {
-    const stars = this.result ? '★'.repeat(this.result.stars) + '☆'.repeat(3 - this.result.stars) : '';
+    const level = this.result?.alarms ?? 0;
+    const lamps = '🚨'.repeat(level) + '⚪'.repeat(3 - level);
     const label = this.s.shareLabel(this.mode.kind === 'daily' ? this.mode.day.split('-').reverse().join('/') : null);
-    return this.s.shareText(label, stars, this.alarm, this.wrongPlans);
+    return this.s.shareText(label, lamps, this.tests, level);
   }
 
   // ---------- settings & tips ----------
@@ -312,9 +342,11 @@ export class GameController {
   /** Wipes the progress and starts over from today's heist. */
   async resetProgress(): Promise<void> {
     this.progress = await resetProgress(this.deps.progress);
+    this.deps.sound.setEnabled(this.settings.sound);
     this.tipsShown = [];
-    this.dialog = 'none';
     this.start(this.firstMode());
+    // Exactly like a first launch: the welcome card, with the language choice.
+    this.dialog = 'welcome';
   }
 
   /** A training tip, given once per room (null outside training or if already given). */

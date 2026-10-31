@@ -10,6 +10,7 @@
   import SettingsDialog from './components/SettingsDialog.svelte';
   import ThiefScene from './components/ThiefScene.svelte';
   import SpeechToast from './components/SpeechToast.svelte';
+  import SymbolsSwitch from './components/SymbolsSwitch.svelte';
   import Toolbar from './components/Toolbar.svelte';
   import TopBar from './components/TopBar.svelte';
 
@@ -30,7 +31,7 @@
       <div class="wide-only tools"><Toolbar {game} /></div>
     </div>
     {#key game.alarmTick}
-      <section class="room" class:alert={game.alarmTick > 0} aria-label={s.room}>
+      <section class="room" aria-label={s.room}>
         <div class="narrow-only toast-slot"><SpeechToast {game} /></div>
         <Board {game} />
         <div class="narrow-only loot-slot"><LootRow {game} /></div>
@@ -44,11 +45,14 @@
   <LanguagePicker {game} />
   <h2>{s.welcomeTitle}</h2>
   <p>{s.welcomeText}</p>
+  <SymbolsSwitch {game} />
   <div class="row">
     <button class="btn" onclick={() => game.closeWelcome(false)}>{s.welcomeKnow}</button>
     <button class="btn primary" onclick={() => game.closeWelcome(true)}>{s.welcomeLearn}</button>
   </div>
 </Modal>
+
+{#key game.alarmTick}{#if game.alarmTick > 0}<div class="red-flash" aria-hidden="true"></div>{/if}{/key}
 
 <HelpSheet {game} />
 <MenuDialog {game} />
@@ -74,8 +78,9 @@
   .room { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 0; }
   .toast-slot { display: contents; }
   .wide-only { display: none; }
-  .alert { animation: alert 0.9s; }
-  @keyframes alert { 0%, 40%, 80% { box-shadow: inset 0 0 0 999px rgba(255, 40, 80, 0.2); } 20%, 60%, 100% { box-shadow: none; } }
+  /* The whole screen flashes red when the alarm goes up. */
+  .red-flash { position: fixed; inset: 0; z-index: 9; pointer-events: none; background: rgba(255, 30, 70, 0.45); opacity: 0; animation: red-flash 1.1s; }
+  @keyframes red-flash { 0%, 36%, 72% { opacity: 1; } 18%, 54%, 100% { opacity: 0; } }
 
   /* Short phones: the loot row gives its height to the board (jewels are still checked in the drawing). */
   @media (max-height: 700px) and (max-aspect-ratio: 1/1) {

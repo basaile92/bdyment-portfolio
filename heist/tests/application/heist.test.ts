@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  alarmLevel, clearPlan, drawSurface, fireLaser, markEmpty, startHeist, submitPlan, type HeistState,
+  alarms, clearPlan, testsUsed, drawSurface, fireLaser, markEmpty, startHeist, submitPlan, type HeistState,
 } from '../../src/application';
-import { starsFor } from '../../src/domain';
 import { SeededRandom } from '../../src/adapters/SeededRandom';
 
 const fresh = (): HeistState => startHeist(new SeededRandom(3));
@@ -12,7 +11,7 @@ describe('a heist', () => {
     const s = fresh();
     expect(s.puzzle.jewels).toHaveLength(5);
     expect(s.plan.size).toBe(0);
-    expect(alarmLevel(s)).toBe(0);
+    expect(testsUsed(s)).toBe(0);
   });
 
   it('counts a laser test once, even when firing from its exit', () => {
@@ -20,7 +19,7 @@ describe('a heist', () => {
     const again = fireLaser(first.state, first.shot.exit);
     expect(first.isNew).toBe(true);
     expect(again.isNew).toBe(false);
-    expect(alarmLevel(again.state)).toBe(1);
+    expect(testsUsed(again.state)).toBe(1);
   });
 
   it('replaces a surface of another colour and erases the same one', () => {
@@ -46,15 +45,21 @@ describe('a heist', () => {
     expect(s.shots).toHaveLength(1);
   });
 
-  it('takes a star for each wrong plan, without touching the alarm', () => {
+  it('raises the alarm one level per wrong plan, without using a test', () => {
     const s = drawSurface(fresh(), 'h:0,0', { color: 'red' });
     const wrong = submitPlan(s);
     expect(wrong.kind).toBe('alarm');
-    expect(alarmLevel(wrong.state)).toBe(0);
-    expect(wrong.state.wrongPlans).toBe(1);
+    expect(testsUsed(wrong.state)).toBe(0);
+    expect(alarms(wrong.state)).toBe(1);
     const right = submitPlan({ ...wrong.state, plan: wrong.state.puzzle.surfaces });
     expect(right.kind).toBe('success');
-    if (right.kind === 'success') expect(right.stars).toBe(2);
+    if (right.kind === 'success') expect(right.alarms).toBe(1);
+  });
+
+  it('wins a perfect heist with no alarm', () => {
+    const s = fresh();
+    const right = submitPlan({ ...s, plan: s.puzzle.surfaces });
+    if (right.kind === 'success') expect(right.alarms).toBe(0);
   });
 
   it('gets the thief caught at the third wrong plan', () => {
@@ -63,12 +68,6 @@ describe('a heist', () => {
     expect(kinds).toEqual(['alarm', 'alarm', 'caught']);
   });
 
-  it('takes stars down to zero, never below', () => {
-    const t = { threeStars: 5, twoStars: 10 };
-    expect(starsFor(4, t, 1)).toBe(2);
-    expect(starsFor(20, t, 1)).toBe(0);
-    expect(starsFor(20, t, 2)).toBe(0);
-  });
 
   it('refuses to submit an empty plan', () => expect(submitPlan(fresh()).kind).toBe('empty-plan'));
 });

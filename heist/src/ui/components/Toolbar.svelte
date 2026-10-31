@@ -39,7 +39,7 @@
             onclick={() => game.pickColor(color)}
           >
             <GemIcon color={JEWEL_HEX[color]} size={26} />
-            <svg viewBox="0 0 1 1" width="11" height="11" aria-hidden="true"><Glyph glyph={GLYPH[color]} x={0.5} y={0.5} size={0.9} fill="#dbe1ff" /></svg>
+            {#if game.symbols}<svg viewBox="0 0 1 1" width="11" height="11" aria-hidden="true"><Glyph glyph={GLYPH[color]} x={0.5} y={0.5} size={0.9} fill="#dbe1ff" /></svg>{/if}
           </button>
         {/each}
       </div>
