@@ -10,6 +10,7 @@ import { FormattedProjectPort } from '../port/FormattedProjectPort';
 import { FormattedSkillPort } from '../port/FormattedSkillPort';
 import { FormattedStudyPort } from '../port/FormattedStudyPort';
 import { FormattedErrorCommandPort } from '../port/FormattedErrorCommandPort';
+import { NavigationPort } from '../port/NavigationPort';
 
 export const AVAILABILITY_COMMAND = 'availability';
 export const CERTIFICATES_COMMAND = 'certificates';
@@ -17,6 +18,8 @@ export const CERTIFICATES_COMMAND = 'certificates';
 export const COMPAGNIES_COMMAND = 'companies';
 export const CLEAR_COMMAND = 'clear';
 export const DESCRIPTION_COMMAND = 'description';
+export const HEIST_COMMAND = 'heist';
+export const HEIST_PATH = '/heist/';
 export const HELP_COMMAND = 'help';
 export const HOBBIES_COMMAND = 'hobbies';
 export const LANGUAGES_COMMAND = 'languages';
@@ -31,6 +34,7 @@ export const AVAILABLE_COMMANDS = [
   COMPAGNIES_COMMAND,
   CLEAR_COMMAND,
   DESCRIPTION_COMMAND,
+  HEIST_COMMAND,
   HELP_COMMAND,
   HOBBIES_COMMAND,
   LANGUAGES_COMMAND,
@@ -54,6 +58,7 @@ export class ConsoleService {
   private formattedSkillPort: FormattedSkillPort;
   private formattedStudyPort: FormattedStudyPort;
   private formattedErrorCommandPort: FormattedErrorCommandPort;
+  private navigationPort: NavigationPort;
 
   constructor(
     formattedAvailabilityPort: FormattedAvailabilityPort,
@@ -68,6 +73,7 @@ export class ConsoleService {
     formattedSkillPort: FormattedSkillPort,
     formattedStudyPort: FormattedStudyPort,
     formattedErrorCommandPort: FormattedErrorCommandPort,
+    navigationPort: NavigationPort,
   ) {
     this.formattedAvailabilityPort = formattedAvailabilityPort;
     this.formattedCertificatePort = formattedCertificatePort;
@@ -81,6 +87,7 @@ export class ConsoleService {
     this.formattedSkillPort = formattedSkillPort;
     this.formattedStudyPort = formattedStudyPort;
     this.formattedErrorCommandPort = formattedErrorCommandPort;
+    this.navigationPort = navigationPort;
     this.executionByCommandName = new Map();
     this.executionByCommandName.set(AVAILABILITY_COMMAND, (parameter) =>
       this.formattedAvailabilityPort.getFormattedAvailability(parameter),
@@ -97,6 +104,7 @@ export class ConsoleService {
     this.executionByCommandName.set(HOBBIES_COMMAND, (parameter) =>
       this.formattedHobbyPort.getFormattedHobbies(parameter),
     );
+    this.executionByCommandName.set(HEIST_COMMAND, () => this.heist());
     this.executionByCommandName.set(HELP_COMMAND, (parameter) => this.formattedHelpPort.getFormattedHelp(parameter));
     this.executionByCommandName.set(LANGUAGES_COMMAND, (parameter) =>
       this.formattedLanguagePort.getFormattedLanguages(parameter),
@@ -124,6 +132,11 @@ export class ConsoleService {
       return this.commandError();
     }
     return execution(parameter);
+  }
+
+  private heist(): Promise<string> {
+    this.navigationPort.navigateTo(HEIST_PATH);
+    return Promise.resolve("<div>Cutting the alarm wires... Opening <span class='subject'>Le Casse</span>.</div>");
   }
 
   private async commandError(): Promise<string> {

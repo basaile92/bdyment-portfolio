@@ -49,6 +49,7 @@ import { AdviseService } from '../../domain/console/service/AdviseService';
 import { ConsoleService } from '../../domain/console/service/ConsoleService';
 import { FormattedErrorCommandAdapter } from '../../infrastructure/console/adapter/FormattedErrorCommandAdapter';
 import { ErrorCommandService } from '../../domain/command/service/ErrorCommandService';
+import { BrowserNavigationAdapter } from '../../infrastructure/console/adapter/BrowserNavigationAdapter';
 import { ErrorCommandFormatterAdapter } from '../../infrastructure/command/adapter/format/ErrorCommandFormatterAdapter';
 
 const apiAvailabilityAdapter = new ApiAvailabilityAdapter();
@@ -121,4 +122,5 @@ export const consoleService = new ConsoleService(
   formattedSkillAdapter,
   formattedStudyAdapter,
   formattedErrorCommandAdapter,
+  new BrowserNavigationAdapter(),
 );

@@ -6,6 +6,8 @@ node_modules/
 
 # build outputs
 front/build/
+heist/dist/
+heist/dist-portfolio/
 back/dist/
 infra/cdk.out/
 infra/lib/**/*.js

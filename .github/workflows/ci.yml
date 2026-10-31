@@ -18,6 +18,7 @@ jobs:
       front: ${{ steps.filter.outputs.front }}
       back: ${{ steps.filter.outputs.back }}
       infra: ${{ steps.filter.outputs.infra }}
+      heist: ${{ steps.filter.outputs.heist }}
       workflow: ${{ steps.filter.outputs.workflow }}
     steps:
       - uses: actions/checkout@v4
@@ -31,6 +32,8 @@ jobs:
               - 'back/**'
             infra:
               - 'infra/**'
+            heist:
+              - 'heist/**'
             workflow:
               - '.github/workflows/**'
 
@@ -56,6 +59,33 @@ jobs:
         with:
           name: front-build
           path: front/build
+          retention-days: 7
+          if-no-files-found: error
+
+  heist:
+    name: Heist game (lint + test + build)
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.heist == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: heist
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: heist/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run check
+      - run: npm test
+      - run: npm run build:portfolio
+      - uses: actions/upload-artifact@v4
+        with:
+          name: heist-dist
+          path: heist/dist-portfolio
           retention-days: 7
           if-no-files-found: error
 
@@ -110,7 +140,7 @@ jobs:
   deploy:
     name: Deploy (CDK)
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    needs: [front, back, infra-test]
+    needs: [front, back, heist, infra-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -124,6 +154,11 @@ jobs:
         with:
           name: front-build
           path: front/build
+      - name: Download heist build
+        uses: actions/download-artifact@v4
+        with:
+          name: heist-dist
+          path: heist/dist-portfolio
       - name: Download back dist
         uses: actions/download-artifact@v4
         with:

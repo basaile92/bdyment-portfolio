@@ -1,0 +1,50 @@
+@import '@fontsource/bungee/latin-400.css';
+@import '@fontsource/nunito/latin-700.css';
+@import '@fontsource/nunito/latin-800.css';
+@import '@fontsource/nunito/latin-900.css';
+
+:root {
+  --ink: #f4f1ff;
+  --muted: #b9c6ff;
+  --bg: #151a4a;
+  --bar: #0b0f30;
+  --slot: #1f2668;
+  --slot-on: #2c3690;
+  --edge: #3a4fb0;
+  --gold: #ffc93c;
+  --orange: #ff8a2a;
+  --cyan: #5ee7ff;
+  --room: #2a2f6e;
+  --cell: #232a78;
+  --max: 1100px;
+  --title-font: 'Bungee', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); }
+body {
+  color: var(--ink);
+  font-family: 'Nunito', system-ui, sans-serif;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: default; }
+button:not(:disabled):active { transform: translateY(2px); }
+button:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+
+.btn {
+  flex: 1; height: 48px; border-radius: 24px; border: 2px solid var(--edge);
+  background: var(--slot); font-weight: 900; font-size: 15px;
+}
+.btn.primary {
+  border: none; background: linear-gradient(90deg, var(--gold), var(--orange)); color: #3a1a00;
+  font-family: var(--title-font); font-weight: 400; box-shadow: 0 4px 0 #b4561a;
+}
+.row { display: flex; gap: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}

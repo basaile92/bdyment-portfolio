@@ -142,4 +142,13 @@ export const commands = [
       },
     ],
   },
+  {
+    command: 'heist',
+    usages: [
+      {
+        parameter: '',
+        description: 'break into the museum: play "Le Casse", a laser deduction game made by Basile Dyment.',
+      },
+    ],
+  },
 ];

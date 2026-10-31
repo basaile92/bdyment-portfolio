@@ -16,6 +16,8 @@ export class SiteBucketS3Stack extends cdk.Stack {
             sources: [
                 aws_s3_deployment.Source.asset(path.join(__dirname, "../../front/build")),
                 aws_s3_deployment.Source.asset(path.join(__dirname, "../asset")),
+                // "Le Casse", the heist game: its build already sits in a heist/ folder, so it lands at bdyment.com/heist/
+                aws_s3_deployment.Source.asset(path.join(__dirname, "../../heist/dist-portfolio")),
             ],
             destinationBucket: siteBucket,
         });
