@@ -1,6 +1,7 @@
 import { allPorts, type BoardSize } from './board';
 import { jewelSurfaces, occupancy, wouldTouchBySide, type PlacedJewel } from './jewels';
 import { traceLaser } from './laser';
+import { pillarBodies, sceneOf, type Pillar } from './pillars';
 import { mirror, rotate, shapeSize, type JewelSpec, type ShapeCell } from './shapes';
 import type { SurfaceMap } from './surfaces';
 
@@ -11,9 +12,13 @@ export interface Puzzle {
   readonly board: BoardSize;
   readonly jewels: readonly PlacedJewel[];
   readonly surfaces: SurfaceMap;
+  /** Fixed pillars, visible from the start (none in a classic room). */
+  readonly pillars?: readonly Pillar[];
 }
 
 const MAX_ATTEMPTS = 2000;
+/** Pillars borrow jewel ids from here on while placing jewels around them. */
+const PILLAR_IDS = 1000;
 const PLACEMENT_TRIES = 80;
 
 function randomOrientation(cells: readonly ShapeCell[], random: Random): ShapeCell[] {
@@ -23,24 +28,26 @@ function randomOrientation(cells: readonly ShapeCell[], random: Random): ShapeCe
   return random() < 0.5 ? mirror(out) : out;
 }
 
-function tryPlace(board: BoardSize, placed: PlacedJewel[], spec: JewelSpec, random: Random): PlacedJewel | null {
+/** Already taken: jewels placed so far plus the pillars (no shared cell or side with them). */
+function tryPlace(board: BoardSize, taken: PlacedJewel[], spec: JewelSpec, random: Random): PlacedJewel | null {
   const cells = randomOrientation(spec.shape.cells, random);
   const size = shapeSize(cells);
-  const occupied = occupancy(placed);
+  const occupied = occupancy(taken);
   for (let t = 0; t < PLACEMENT_TRIES; t++) {
     const ox = Math.floor(random() * (board.width - size.width + 1));
     const oy = Math.floor(random() * (board.height - size.height + 1));
     const moved = cells.map((c) => ({ ...c, x: c.x + ox, y: c.y + oy }));
     if (moved.some((c) => wouldTouchBySide(occupied, board, c))) continue;
-    return { id: placed.length, shapeId: spec.shape.id, color: spec.color, cells: moved };
+    return { id: taken.filter((j) => j.id < PILLAR_IDS).length, shapeId: spec.shape.id, color: spec.color, cells: moved };
   }
   return null;
 }
 
-function placeAll(board: BoardSize, specs: readonly JewelSpec[], random: Random): PlacedJewel[] | null {
+function placeAll(board: BoardSize, specs: readonly JewelSpec[], random: Random, pillars: readonly Pillar[]): PlacedJewel[] | null {
   const placed: PlacedJewel[] = [];
+  const pillarBlocks = pillarBodies(pillars, PILLAR_IDS);
   for (const spec of specs) {
-    const jewel = tryPlace(board, placed, spec, random);
+    const jewel = tryPlace(board, [...placed, ...pillarBlocks], spec, random);
     if (!jewel) return null;
     placed.push(jewel);
   }
@@ -51,8 +58,9 @@ function placeAll(board: BoardSize, specs: readonly JewelSpec[], random: Random)
 export function everyJewelDetectable(puzzle: Puzzle): boolean {
   const owners = jewelSurfaces(puzzle.board, puzzle.jewels);
   const seen = new Set<number>();
+  const scene = sceneOf(puzzle.board, puzzle.pillars);
   for (const port of allPorts(puzzle.board)) {
-    for (const key of traceLaser(puzzle.board, puzzle.surfaces, port).touched) {
+    for (const key of traceLaser(puzzle.board, puzzle.surfaces, port, scene).touched) {
       const owner = owners.get(key)?.owner;
       if (owner !== undefined) seen.add(owner);
     }
@@ -64,11 +72,11 @@ export function everyJewelDetectable(puzzle: Puzzle): boolean {
  * Places the jewels at random: they may touch at a single point but never share
  * a side, and each of them can be detected from the outside.
  */
-export function generatePuzzle(board: BoardSize, specs: readonly JewelSpec[], random: Random): Puzzle {
+export function generatePuzzle(board: BoardSize, specs: readonly JewelSpec[], random: Random, pillars: readonly Pillar[] = []): Puzzle {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const jewels = placeAll(board, specs, random);
+    const jewels = placeAll(board, specs, random, pillars);
     if (!jewels) continue;
-    const puzzle: Puzzle = { board, jewels, surfaces: jewelSurfaces(board, jewels) };
+    const puzzle: Puzzle = { board, jewels, surfaces: jewelSurfaces(board, jewels), ...(pillars.length ? { pillars } : {}) };
     if (everyJewelDetectable(puzzle)) return puzzle;
   }
   throw new Error('Unable to generate a puzzle with these jewels on this board.');

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { cellIndex, closedRegions, colorsIn, type PortId } from '../../domain';
+  import { ABSORBED, cellIndex, closedRegions, colorsIn, keyInsideCells, pillarCells, pillarSurfaces, prismColor, type Pillar, type PortId } from '../../domain';
   import { describeCursor, FACET_KEYS, moveCursor, WALL_KEYS, type Cursor } from '../presenters/keyboard';
   import { laserDescription } from '../presenters/palette';
   import type { Shot } from '../../application';
@@ -16,7 +16,7 @@
 
   let { game }: { game: GameController } = $props();
 
-  type Preview = { kind: 'draw'; target: DrawTarget } | { kind: 'empty'; cell: number } | null;
+  type Preview = { kind: 'draw'; target: DrawTarget } | { kind: 'empty'; cell: number } | { kind: 'erase'; target: DrawTarget; cell: number } | null;
 
   let svg = $state<SVGSVGElement>();
   let areaEl = $state<HTMLDivElement>();
@@ -28,6 +28,7 @@
   let cursor = $state<Cursor | null>(null);
   let announce = $state('');
   let painting: boolean | null = null;
+  let erasing = false;
 
   const board = $derived(game.prismjack.puzzle.board);
   const view = $derived(viewSize(board));
@@ -44,6 +45,8 @@
   const margin = $derived(unit > 0 ? (FRAME_PAD + FRAME_EDGE) / unit : 0);
   const edgeWidth = $derived(unit > 0 ? FRAME_EDGE / unit : 0);
   const plan = $derived(game.prismjack.plan);
+  /** Pillar cells: nothing is drawn there, nor on their borders. */
+  const blocked = $derived(pillarCells(board, game.prismjack.puzzle.pillars));
   const shown = $derived(game.over ? game.prismjack.puzzle.surfaces : plan);
 
   const cells = $derived(Array.from({ length: board.width * board.height }, (_, i) => ({ i, x: i % board.width, y: Math.floor(i / board.width) })));
@@ -62,8 +65,10 @@
     const stripes = parts.length > 0 ? parts.map((c) => JEWEL_HEX[c]) : ['#e9eeff'];
     const a = portCenter(board, shot.entry);
     const b = portMouth(board, shot.entry);
-    const c = portMouth(board, shot.exit);
-    const d = portCenter(board, shot.exit);
+    /** Swallowed by a black pillar: nothing comes out anywhere. */
+    const absorbed = shot.exit === ABSORBED;
+    const c = absorbed ? b : portMouth(board, shot.exit);
+    const d = absorbed ? a : portCenter(board, shot.exit);
     /** How far the light is seen under the frosted glass before it disappears (never the whole path). */
     const INSIDE = 1.1;
     const inward = (from: Point, to: Point): Point => {
@@ -76,7 +81,7 @@
     /** Unit vector across the outgoing beam, to lay the colour stripes side by side. */
     const across = { x: -(outStart.y - d.y) / len, y: (outStart.x - d.x) / len };
     return {
-      shot, stripes, a, b, c, d, inEnd, outStart, across,
+      shot, stripes, a, b, c, d, inEnd, outStart, across, absorbed,
     };
   });
 
@@ -142,7 +147,11 @@
   const hitOf = (e: PointerEvent | MouseEvent) => hitTest(board, pointOf(e));
   const cellOf = (h: CellHit) => cellIndex(board, h.x, h.y);
 
+  /** Only the main button draws or fires: the right button just changes colour (contextmenu). */
+  const secondaryButton = (e: PointerEvent) => e.pointerType === 'mouse' && e.button !== 0;
+
   function onPointerDown(e: PointerEvent) {
+    if (secondaryButton(e)) return;
     const hit = hitOf(e);
     skipClick = false;
     if (e.pointerType !== 'mouse' && hit?.kind === 'port') {
@@ -151,10 +160,18 @@
       hoveredPort = hit.port;
       return;
     }
-    if (game.over || hit?.kind !== 'cell') return;
+    if (game.over || hit?.kind !== 'cell' || blocked.has(cellOf(hit))) return;
+    startStroke(e, hit);
+  }
+
+  /** Drawing, painting empty cells or erasing: follows the pointer until it lifts. */
+  function startStroke(e: PointerEvent, hit: CellHit) {
     svg?.setPointerCapture(e.pointerId);
     felt = '';
-    if (game.tool === 'empty') {
+    if (game.tool === 'erase') {
+      erasing = true;
+      eraseUnder(hit);
+    } else if (game.tool === 'empty') {
       painting = !game.prismjack.emptyCells.has(cellOf(hit));
       game.markEmpty(cellOf(hit), painting);
     } else {
@@ -166,7 +183,7 @@
   function touchFeedback(e: PointerEvent, hit: CellHit) {
     if (e.pointerType === 'mouse') return;
     showLoupe(e);
-    feel(pressing ? targetId(pressing) : `cell:${cellOf(hit)}`);
+    feel(pressing ? targetId(pressing) : erasing ? targetId(traceTarget(hit, game.color)) : `cell:${cellOf(hit)}`);
   }
 
   function onPointerMove(e: PointerEvent) {
@@ -195,14 +212,25 @@
     hover = hoverFor(hit);
   }
 
+  /** Eraser: whatever is drawn at the target under the pointer, and the cell's "empty" mark. */
+  function eraseUnder(hit: CellHit) {
+    game.erase(traceTarget(hit, game.color).key, cellOf(hit));
+  }
+
   function trackDrawing(e: PointerEvent, hit: CellHit) {
+    if (erasing) {
+      eraseUnder(hit);
+      touchFeedback(e, hit);
+      return;
+    }
     if (painting !== null) game.markEmpty(cellOf(hit), painting);
     if (pressing) pressing = traceTarget(hit, game.color);
     if (pressing || painting !== null) touchFeedback(e, hit);
   }
 
   function hoverFor(hit: Hit | null): Preview {
-    if (hit?.kind !== 'cell' || game.over) return null;
+    if (hit?.kind !== 'cell' || game.over || blocked.has(cellOf(hit))) return null;
+    if (game.tool === 'erase') return { kind: 'erase', target: traceTarget(hit, game.color), cell: cellOf(hit) };
     return game.tool === 'empty' ? { kind: 'empty', cell: cellOf(hit) } : { kind: 'draw', target: traceTarget(hit, game.color) };
   }
 
@@ -217,6 +245,7 @@
     if (pressing) game.draw(pressing.key, pressing.surface);
     pressing = null;
     painting = null;
+    erasing = false;
     loupe = null;
   }
 
@@ -225,6 +254,7 @@
     aiming = false;
     pressing = null;
     painting = null;
+    erasing = false;
     loupe = null;
   }
 
@@ -281,6 +311,19 @@
 
   // ---------- drawing helpers ----------
 
+  /** Bounding box and centre of a pillar, in view units. */
+  const pillarBox = (pillar: Pillar) => {
+    const xs = pillar.cells.map((c) => c.x), ys = pillar.cells.map((c) => c.y);
+    const x0 = BAND + Math.min(...xs), y0 = BAND + Math.min(...ys);
+    const w = Math.max(...xs) - Math.min(...xs) + 1, h = Math.max(...ys) - Math.min(...ys) + 1;
+    return { x: x0, y: y0, w, h, cx: x0 + w / 2, cy: y0 + h / 2 };
+  };
+  /** 1 for the first torch lit, 2 for the next… */
+  const orderOf = (shot: Shot) => game.prismjack.shots.indexOf(shot) + 1;
+  const pillarPath = (pillar: Pillar) =>
+    pillar.cells.map((c) => `M${translate(PART_POLYGON[c.part], BAND + c.x, BAND + c.y).trim().split(/\s+/).join('L')}Z`).join('');
+  /** A pillar's outline only (no inner grid lines): its outer straight sides and its diagonals. */
+  const pillarOutline = (pillar: Pillar) => [...pillarSurfaces(board, [pillar])].map(([key, s]) => lineOf(surfaceSegment(key, s)));
   const lineOf = ([a, b]: [Point, Point]) => ({ x1: a.x, y1: a.y, x2: b.x, y2: b.y });
   const isRemoval = (t: DrawTarget) => {
     const cur = plan.get(t.key);
@@ -294,7 +337,10 @@
   /** Radius of a torch's lens, where the result colour shows. */
   const LENS = 0.205;
   const isLinked = (shot: Shot | undefined) => shot !== undefined && game.selected === shot;
-  const activePreview = $derived<Preview>(pressing ? { kind: 'draw', target: pressing } : hover);
+  const activePreview = $derived.by<Preview>(() => {
+    const p: Preview = pressing ? { kind: 'draw', target: pressing } : hover;
+    return p?.kind === 'draw' && keyInsideCells(board, p.target.key, blocked) ? null : p;
+  });
 </script>
 
 {#snippet drawing()}
@@ -314,6 +360,10 @@
         {@const removing = isRemoval(activePreview.target)}
         {@const seg = lineOf(surfaceSegment(activePreview.target.key, activePreview.target.surface))}
         <line {...seg} class={removing ? 'ghost-remove' : 'ghost'} class:pressed={pressing !== null} stroke={removing ? undefined : JEWEL_HEX[activePreview.target.surface.color]} />
+      {:else if activePreview?.kind === 'erase'}
+        {@const existing = plan.get(activePreview.target.key)}
+        {#if existing}<line {...lineOf(surfaceSegment(activePreview.target.key, existing))} class="ghost-remove" />{/if}
+        {#if game.prismjack.emptyCells.has(activePreview.cell)}<path class="cross ghost-cross faint" d={crossPath(activePreview.cell)} />{/if}
       {:else if activePreview?.kind === 'empty'}
         <path class="cross ghost-cross" class:faint={game.prismjack.emptyCells.has(activePreview.cell)} d={crossPath(activePreview.cell)} />
       {/if}
@@ -336,6 +386,10 @@
       onpointercancel={onPointerCancel}
       onpointerleave={onLeave}
       onclick={onClick}
+      oncontextmenu={(e) => {
+        e.preventDefault();
+        game.cycleColor();
+      }}
       onkeydown={onKey}
       onblur={() => (cursor = null)}
       class:painting={!game.over}
@@ -393,6 +447,25 @@
       <g class="sensors" aria-hidden="true">
         {#each cells as c (c.i)}<circle cx={BAND + c.x + 0.5} cy={BAND + c.y + 0.5} r=".035" />{/each}
       </g>
+      {#each game.prismjack.puzzle.pillars ?? [] as pillar, i (i)}
+        {@const box = pillarBox(pillar)}
+        {@const current = pillar.kind === 'prism' ? prismColor(pillar, game.prismjack.pillarStates[i] ?? 0) : null}
+        <!-- Pillars stand above the glass: visible from the start. -->
+        <g class="pillar {pillar.kind}">
+          <!-- One path for the whole pillar: separate cell shapes would leave hairline seams between them. -->
+          <path d={pillarPath(pillar)} class="pillar-body" fill={current ? JEWEL_HEX[current] : undefined} />
+          {#each pillarOutline(pillar) as seg, k (k)}<line {...seg} class="pillar-edge" />{/each}
+          {#if pillar.kind === 'prism' && pillar.order}
+            <!-- Its four colours in order; the one it will give next is the big one. -->
+            {@const step = Math.min(0.2, box.w / 5)}
+            <rect x={box.cx - step * 2} y={box.cy - step * 0.55} width={step * 4} height={step * 1.1} rx={step * 0.55} class="prism-legend" />
+            {#each pillar.order as color, k (k)}
+              <circle cx={box.cx - step * 1.5 + k * step} cy={box.cy} r={k === (game.prismjack.pillarStates[i] ?? 0) % 4 ? step * 0.42 : step * 0.26}
+                fill={JEWEL_HEX[color]} class:now={k === (game.prismjack.pillarStates[i] ?? 0) % 4} />
+            {/each}
+          {/if}
+        </g>
+      {/each}
       <rect class="facade" x={BAND - 0.06} y={BAND - 0.06} width={board.width + 0.12} height={board.height + 0.12} rx=".08" />
 
       {#if game.over}
@@ -434,8 +507,9 @@
           <!-- The torch shines through the glass wall, its beam vanishes under the frosted roof… -->
           <line x1={beams.a.x} y1={beams.a.y} x2={beams.inEnd.x} y2={beams.inEnd.y} stroke="url(#beam-in)" class="beam in" class:wide={twins.has(beams.shot.entry)} />
           <circle cx={beams.b.x} cy={beams.b.y} r=".4" class="splash in" fill="url(#torchlight)" />
-          <!-- …and the light comes out elsewhere, tinted by the jewels it touched. -->
+          <!-- …and the light comes out elsewhere, tinted by the jewels it touched (unless a black pillar swallowed it). -->
           {@const splash = colorSlices(beams.shot.color, beams.c, 0.4)}
+          {#if !beams.absorbed}
           <g class="splash out">
             {#if splash.length > 0}
               {#each splash as s (s.color)}<path d={s.path} fill={JEWEL_HEX[s.color]} />{/each}
@@ -450,6 +524,7 @@
                 class="stripe" style="--o: {i - (beams.stripes.length - 1) / 2}" />
             {/each}
           </g>
+          {/if}
         {/key}
       {/if}
 
@@ -480,12 +555,19 @@
               <circle cx={c.x} cy={c.y} r={LENS} fill={laserHex(shot.color)} />
               {@const color = colorsIn(shot.color)[0]}
               {#if color && game.symbols}<Glyph glyph={GLYPH[color]} x={c.x} y={c.y} size={0.16} fill={inkOn(shot.color)} />{/if}
+            {:else if shot.exit === ABSORBED}
+              <!-- Swallowed by a black pillar: a dead black lens. -->
+              <circle cx={c.x} cy={c.y} r={LENS} fill="#05050a" />
+              <circle cx={c.x} cy={c.y} r=".09" class="absorbed-dot" />
             {:else}
               <circle cx={c.x} cy={c.y} r={LENS} fill="url(#reflector)" />
               <line x1={c.x - 0.11} y1={c.y + 0.11} x2={c.x + 0.11} y2={c.y - 0.11} class="clear-slash" />
             {/if}
             <circle cx={c.x} cy={c.y} r={LENS} class="lens-rim" />
             <path d="M{c.x - 0.15} {c.y - 0.06}a.17 .17 0 0 1 .11 -.105" class="gloss" />
+            <!-- Which test lit this torch (both ends of a light path share the number). -->
+            <circle cx={c.x - 0.22} cy={c.y + 0.22} r=".115" class="order-badge" />
+            <text x={c.x - 0.22} y={c.y + 0.262} class="order" class:small={orderOf(shot) >= 10}>{orderOf(shot)}</text>
             {#if shot.exit === shot.entry}
               <circle cx={c.x + 0.22} cy={c.y - 0.22} r=".1" class="back-badge" />
               <text x={c.x + 0.22} y={c.y - 0.187} class="back">↩</text>
@@ -559,6 +641,24 @@
   .gloss { fill: none; stroke: #fff; stroke-opacity: 0.6; stroke-width: 0.026; stroke-linecap: round; }
   .clear-slash { stroke: #fff; stroke-width: 0.04; stroke-linecap: round; }
   .selected { fill: none; stroke: var(--cyan); stroke-width: 0.06; }
+  /* Pillars: black swallows, clear (glass) reflects without colour, prism shows its colour cycle. */
+  .pillar { pointer-events: none; }
+  /* Fill without strokes (it hides the grid lines under it), then only the outline on top. */
+  .pillar-body { stroke: none; }
+  .pillar-edge { stroke-width: 0.05; stroke-linecap: round; }
+  .pillar.black .pillar-body { fill: #06060c; }
+  .pillar.black .pillar-edge { stroke: #5a5a78; }
+  .pillar.clear .pillar-body { fill: #b9cdf0; fill-opacity: 0.92; }
+  .pillar.clear .pillar-edge { stroke: #fff; }
+  .pillar.prism .pillar-body { fill-opacity: 0.9; transition: fill 0.3s; }
+  .pillar.prism .pillar-edge { stroke: #ffd23f; stroke-width: 0.07; }
+  .prism-legend { fill: rgba(5, 8, 30, 0.7); }
+  .pillar circle { stroke: #0b0f30; stroke-width: 0.012; transition: r 0.2s; }
+  .pillar circle.now { stroke: #fff; stroke-width: 0.03; }
+  .absorbed-dot { fill: none; stroke: #5a5a78; stroke-width: 0.025; }
+  .order-badge { fill: var(--gold); stroke: #0b0f30; stroke-width: 0.025; }
+  .order { font-size: 0.13px; font-weight: 900; text-anchor: middle; fill: #1b1745; pointer-events: none; font-family: 'Nunito', sans-serif; }
+  .order.small { font-size: 0.105px; }
   .back-badge { fill: #0b0f30; stroke: #fff; stroke-width: 0.03; }
   .back { font-size: 0.14px; font-weight: 900; text-anchor: middle; fill: #fff; pointer-events: none; }
   /* In: the torch beam fades in, then dies under the glass. Out: the tinted light spills out at the exit. */

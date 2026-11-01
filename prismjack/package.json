@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Prismjack \u2014 jeu de d\u00e9duction : retrouve les joyaux cach\u00e9s en testant la salle au laser.",
+  "description": "Prismjack — jeu de déduction : retrouve les joyaux cachés en testant la salle au laser.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -32,8 +32,11 @@
   },
   "dependencies": {
     "@capacitor/core": "^8.0.0",
+    "@capacitor/filesystem": "^8.1.5",
     "@capacitor/haptics": "^8.0.0",
+    "@capacitor/ios": "^8.6.0",
     "@capacitor/preferences": "^8.0.0",
+    "@capacitor/share": "^8.0.3",
     "@fontsource/bungee": "^5.3.0",
     "@fontsource/nunito": "^5.3.0"
   }

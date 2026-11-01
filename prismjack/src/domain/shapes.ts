@@ -69,6 +69,8 @@ const shape = (id: string, cells: [number, number, CellPart][]): JewelShape => (
 });
 
 export const SHAPES = {
+  /** Plain 2 × 2 square: only straight sides, light always comes straight back. */
+  square: shape('square', [[0, 0, 'full'], [1, 0, 'full'], [0, 1, 'full'], [1, 1, 'full']]),
   /** Isosceles right triangle: hypotenuse 2 cells, height 1. */
   smallTriangle: shape('smallTriangle', [[0, 0, 'NE'], [1, 0, 'NW']]),
   /** Isosceles right triangle with 3-cell legs. */

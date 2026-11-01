@@ -16,12 +16,15 @@
 
 <footer class="bar">
   <div class="inner">
-    <div class="line">
-      <button class="tool" class:on={game.tool === 'trace'} aria-pressed={game.tool === 'trace'} onclick={() => (game.tool = 'trace')}>
-        <ToolIcon kind="trace" color={JEWEL_HEX[game.color]} /><span>{game.s.trace}</span>
+    <div class="line three">
+      <button class="tool" class:on={game.tool === 'trace'} aria-label={game.s.trace} aria-pressed={game.tool === 'trace'} onclick={() => (game.tool = 'trace')}>
+        <ToolIcon kind="trace" color={JEWEL_HEX[game.color]} plain /><span class="tip">{game.s.trace}</span>
       </button>
-      <button class="tool" class:on={game.tool === 'empty'} aria-pressed={game.tool === 'empty'} onclick={() => (game.tool = 'empty')}>
-        <ToolIcon kind="empty" color="" /><span>{game.s.empty}</span>
+      <button class="tool" class:on={game.tool === 'empty'} aria-label={game.s.empty} aria-pressed={game.tool === 'empty'} onclick={() => (game.tool = 'empty')}>
+        <ToolIcon kind="empty" color="" plain /><span class="tip">{game.s.empty}</span>
+      </button>
+      <button class="tool" class:on={game.tool === 'erase'} aria-label={game.s.eraser} aria-pressed={game.tool === 'erase'} onclick={() => (game.tool = 'erase')}>
+        <ToolIcon kind="erase" color="" plain /><span class="tip">{game.s.eraser}</span>
       </button>
       <button class="icon" aria-label={game.s.undo} disabled={!canUndo} onclick={() => game.undo()}><UiIcon name="undo" /></button>
       <button class="icon" aria-label={game.s.redo} disabled={!canRedo} onclick={() => game.redo()}><UiIcon name="redo" /></button>
@@ -74,6 +77,18 @@
   }
   .go small { display: block; font-family: 'Nunito', sans-serif; font-size: 10px; font-weight: 900; margin-top: 2px; }
   .go.next { font-size: 15px; padding: 0 6px; }
+
+  /* Tools show their icon only; the name appears in a bubble while the mouse is over them. */
+  .tool { position: relative; }
+  .tip {
+    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 20;
+    padding: 4px 9px; border-radius: 8px; background: #fff; color: #1b1745; font-size: 12px; font-weight: 900; white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); opacity: 0; pointer-events: none; transition: opacity 0.12s;
+  }
+  .tip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #fff; }
+  @media (hover: hover) {
+    .tool:hover .tip { opacity: 1; }
+  }
 
   /* Narrow phones (360 px): compact GO and gems so the bar fits. */
   @media (max-width: 380px) {

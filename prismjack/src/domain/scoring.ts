@@ -1,5 +1,6 @@
 import { allPorts, type BoardSize } from './board';
-import { traceLaser } from './laser';
+import { ABSORBED, traceLaser } from './laser';
+import { sceneOf, type Pillar } from './pillars';
 import type { SurfaceMap } from './surfaces';
 
 export interface AlarmThresholds {
@@ -14,19 +15,22 @@ const QUIET_RATIO = 0.6;
 export const MAX_ALARM = 3;
 
 /** Distinct shots needed to light every port: firing them all always solves the room. */
-export function shotsToRevealAll(board: BoardSize, surfaces: SurfaceMap): number {
+export function shotsToRevealAll(board: BoardSize, surfaces: SurfaceMap, pillars: readonly Pillar[] = []): number {
+  const scene = sceneOf(board, pillars);
   const lit = new Set<number>();
   let shots = 0;
   for (const port of allPorts(board)) {
     if (lit.has(port)) continue;
-    lit.add(port).add(traceLaser(board, surfaces, port).exit);
+    const { exit } = traceLaser(board, surfaces, port, scene);
+    lit.add(port);
+    if (exit !== ABSORBED) lit.add(exit);
     shots++;
   }
   return shots;
 }
 
-export function alarmThresholds(board: BoardSize, surfaces: SurfaceMap, jewelCount: number): AlarmThresholds {
-  const all = shotsToRevealAll(board, surfaces);
+export function alarmThresholds(board: BoardSize, surfaces: SurfaceMap, jewelCount: number, pillars: readonly Pillar[] = []): AlarmThresholds {
+  const all = shotsToRevealAll(board, surfaces, pillars);
   return { quiet: Math.max(jewelCount + 2, Math.round(all * QUIET_RATIO)), all };
 }
 

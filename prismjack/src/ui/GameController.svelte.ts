@@ -1,9 +1,11 @@
+import { renderShareCard, type ShareCard } from './shareCard';
+import type { ShareOutcome, Sharer } from '../ports/Sharer';
 import {
-  alarms, testsLimit, testsUsed, untilNextDay, clearPlan, dailySeed, dayOf, drawSurface, EMPTY_HISTORY, fireLaser, jewelsFor, markEmpty,
-  missingJewels, recordCaught, recordPrismjack, resetProgress, redo, remember, saveSettings, shotAt, startPrismjack, submitPlan, undo,
+  alarms, eraseAt, startMode, testsLimit, testsUsed, untilNextDay, clearPlan, dayOf, drawSurface, EMPTY_HISTORY, fireLaser, LEVEL_COUNT, markEmpty,
+  missingJewels, recordCaught, recordPrismjack, resetProgress, redo, remember, saveSettings, shotAt, submitPlan, undo, unlockedLevels,
   type PrismjackMode, type PrismjackState, type PlanHistory, type Shot,
 } from '../application';
-import { recognizedJewels, type JewelColor, type PortId, type Surface, type SurfaceKey } from '../domain';
+import { colorsIn, JEWEL_COLORS, recognizedJewels, type JewelColor, type PortId, type Surface, type SurfaceKey } from '../domain';
 import type { Haptics } from '../ports/Haptics';
 import { NO_PROGRESS, type Progress, type ProgressStore, type Settings } from '../ports/ProgressStore';
 import type { RandomSource } from '../ports/RandomSource';
@@ -13,17 +15,33 @@ import type { Speech } from './presenters/messages';
 import { stringsFor, type Language, type Strings } from './i18n/strings';
 import { tipText, type TipEvent } from './presenters/tips';
 
+const SHARE_URL = 'https://bdyment.com/prismjack/';
+const COLOR_EMOJI: Record<JewelColor, string> = { red: '🟥', blue: '🟦', yellow: '🟨', white: '⬜' };
+
+/** One square per test: its colour, ⬛ when nothing was touched, 🌈 for a mix. */
+function shotEmoji(shot: Shot): string {
+  const colors = colorsIn(shot.color);
+  if (colors.length === 0) return '⬛';
+  return colors.length > 1 ? '🌈' : COLOR_EMOJI[colors[0] ?? 'white'];
+}
+
 export interface GameDependencies {
   readonly randomFor: (seed: number | null) => RandomSource;
   readonly progress: ProgressStore;
   readonly haptics: Haptics;
   readonly sound: Sound;
+  readonly sharer: Sharer;
+  /** App Store page offered on the web version on an iPhone (null: nothing to offer). */
+  readonly appStoreUrl: string | null;
   readonly today: () => Date;
   /** The device language, used until the player picks one. */
   readonly deviceLanguage: Language;
 }
 
-export type Dialog = 'none' | 'welcome' | 'help' | 'menu' | 'settings' | 'confirm-new' | 'confirm-clear' | 'confirm-go' | 'win' | 'caught';
+export type Dialog = 'none' | 'welcome' | 'help' | 'settings' | 'confirm-clear' | 'confirm-go' | 'win' | 'caught';
+
+/** What fills the screen: the home menu, the level map, or a room being played. */
+export type Screen = 'home' | 'levels' | 'game';
 
 /** GO animation: drop out of the window, climb back, keep the face a moment. */
 const DIVE_MS = 650;
@@ -48,7 +66,8 @@ export class GameController {
   // Immutable values: raw state keeps object identity and is cheaper than deep proxies.
   prismjack = $state.raw<PrismjackState>() as PrismjackState;
   history = $state.raw<PlanHistory>(EMPTY_HISTORY);
-  mode = $state.raw<PrismjackMode>({ kind: 'free' });
+  mode = $state.raw<PrismjackMode>({ kind: 'level', index: 0 });
+  screen = $state<Screen>('home');
   progress = $state.raw<Progress>(NO_PROGRESS);
   selected = $state.raw<Shot | null>(null);
   flashed = $state.raw<Shot | null>(null);
@@ -93,19 +112,35 @@ export class GameController {
   /** Plain (non-reactive) list: tips are bookkeeping, nothing renders from it. */
   private tipsShown: TipEvent[] = [];
 
-  constructor(private readonly deps: GameDependencies) {
-    this.prismjack = startPrismjack(deps.randomFor(null));
+  get appStoreUrl(): string | null {
+    return this.deps.appStoreUrl;
   }
 
+  constructor(private readonly deps: GameDependencies) {
+    this.prismjack = startMode({ kind: 'level', index: 0 }, deps.randomFor(null));
+  }
+
+  /** The app opens on the home menu (after the welcome card on a first launch). */
   async init(): Promise<void> {
     this.progress = await this.deps.progress.load();
     this.deps.sound.setEnabled(this.settings.sound);
-    this.start(this.firstMode());
+    this.screen = 'home';
     if (this.settings.language === undefined) this.dialog = 'welcome';
   }
 
-  private firstMode(): PrismjackMode {
-    return this.dailyDone ? { kind: 'free' } : { kind: 'daily', day: this.today() };
+  /** Campaign levels that can be played (the next one after the highest won is open). */
+  get unlocked(): number {
+    return unlockedLevels(this.progress, LEVEL_COUNT);
+  }
+
+  goHome(): void {
+    this.screen = 'home';
+    this.dialog = 'none';
+  }
+
+  showLevels(): void {
+    this.screen = 'levels';
+    this.dialog = 'none';
   }
 
   private today(): string {
@@ -126,9 +161,9 @@ export class GameController {
   // ---------- prismjacks ----------
 
   start(mode: PrismjackMode): void {
-    const seed = mode.kind === 'daily' ? dailySeed(mode.day) : null;
     this.mode = mode;
-    this.prismjack = startPrismjack(this.deps.randomFor(seed), { jewels: jewelsFor(mode) });
+    this.screen = 'game';
+    this.prismjack = startMode(mode, this.deps.randomFor(null));
     this.history = EMPTY_HISTORY;
     this.selected = null;
     this.flashed = null;
@@ -138,39 +173,56 @@ export class GameController {
     this.mood = 'calm';
     this.dialog = 'none';
     this.tipsShown = [];
-    this.speech = { kind: 'intro' };
-    this.tip('start');
+    this.speech = { kind: 'tip', text: this.introText(mode) };
+  }
+
+  /** What the thief says when a room opens: the level's lesson, today's heist, the run's progress. */
+  private introText(mode: PrismjackMode): string {
+    const s = this.s;
+    if (mode.kind === 'level') return s.levelIntro[mode.index] ?? s.levelGeneric(mode.index + 1);
+    if (mode.kind === 'daily') return s.dailyIntro;
+    return s.runIntro(mode.step + 1);
+  }
+
+  startLevel(index: number): void {
+    if (index < this.unlocked) this.start({ kind: 'level', index });
   }
 
   startDaily(): void {
-    this.start(this.dailyDone ? { kind: 'free' } : { kind: 'daily', day: this.today() });
+    if (!this.dailyDone) this.start({ kind: 'daily', day: this.today() });
   }
 
-  requestMenu(): void {
-    this.dialog = 'menu';
+  startRun(): void {
+    this.start({ kind: 'run', step: 0 });
   }
 
-  /** Retry the same room; the daily prismjack allows a single attempt, so a free one replaces it. */
+  /** Retry: the same level; a new run; the daily heist allows a single attempt (back home). */
   replay(): void {
-    if (this.mode.kind === 'daily') this.startDaily();
-    else this.start(this.mode);
+    const m = this.mode;
+    if (m.kind === 'daily') this.goHome();
+    else if (m.kind === 'run') this.startRun();
+    else this.start(m);
   }
 
-  readonly continueLabel = $derived(
-    this.won ? (this.mode.kind === 'training' && this.mode.level < 3 ? this.s.next : this.s.nextPrismjack) : this.mode.kind === 'daily' ? this.s.freePrismjack : this.s.retry,
-  );
+  readonly continueLabel = $derived.by(() => {
+    const m = this.mode, s = this.s;
+    if (m.kind === 'daily') return s.backHome;
+    if (m.kind === 'run') return this.won ? s.nextRoom : s.newRun;
+    if (!this.won) return s.retry;
+    return m.index + 1 < LEVEL_COUNT ? s.nextLevel : s.backHome;
+  });
 
   /** After a finished prismjack: the obvious next step. */
   continueAfter(): void {
-    if (this.won || this.mode.kind === 'daily') this.next();
+    if (this.won) this.next();
     else this.replay();
   }
 
   next(): void {
     const m = this.mode;
-    if (m.kind === 'training' && m.level < 3) this.start({ kind: 'training', level: (m.level + 1) as 2 | 3 });
-    else if (m.kind === 'training' && !this.dailyDone) this.startDaily();
-    else this.start({ kind: 'free' });
+    if (m.kind === 'level' && m.index + 1 < LEVEL_COUNT) this.start({ kind: 'level', index: m.index + 1 });
+    else if (m.kind === 'run') this.start({ kind: 'run', step: m.step + 1 });
+    else this.goHome();
   }
 
   // ---------- laser tests ----------
@@ -224,6 +276,20 @@ export class GameController {
     this.change(drawSurface(this.prismjack, key, surface));
     this.deps.sound.play(erasing ? 'erase' : 'draw');
     this.tip('first-draw');
+  }
+
+  /** Eraser: removes what is drawn at `key` and the "empty" mark of `cell`. */
+  erase(key: SurfaceKey | null, cell: number | null): void {
+    const next = eraseAt(this.prismjack, key, cell);
+    if (next === this.prismjack) return;
+    this.change(next);
+    this.deps.sound.play('erase');
+  }
+
+  /** Right click: next jewel colour (and back to drawing). */
+  cycleColor(): void {
+    const i = JEWEL_COLORS.indexOf(this.color);
+    this.pickColor(JEWEL_COLORS[(i + 1) % JEWEL_COLORS.length] ?? 'red');
   }
 
   markEmpty(cell: number, empty: boolean): void {
@@ -321,6 +387,7 @@ export class GameController {
     this.revealAll(() => (this.dialog = 'win'));
   }
 
+
   /** Reveals the jewels one by one, then runs `done`. */
   private revealAll(done: () => void): void {
     this.revealed = 0;
@@ -332,11 +399,61 @@ export class GameController {
     setTimeout(step, REVEAL_STEP_MS);
   }
 
+  /** What the share sheet sends: no spoiler, just the shape of the heist (one square per test). */
   shareText(): string {
-    const level = this.result?.alarms ?? 0;
-    const lamps = '🚨'.repeat(level) + '⚪'.repeat(3 - level);
-    const label = this.s.shareLabel(this.mode.kind === 'daily' ? this.mode.day.split('-').reverse().join('/') : null);
-    return this.s.shareText(label, lamps, this.tests, level);
+    const s = this.s;
+    if (this.mode.kind === 'run') {
+      const rooms = this.mode.step;
+      return [s.shareRunTitle, s.shareRun(rooms, Math.max(this.progress.runBest, rooms)), SHARE_URL].join('\n');
+    }
+    const day = this.mode.kind === 'daily' ? this.mode.day.split('-').reverse().join('/') : null;
+    const won = this.prismjack.status === 'success';
+    const level = this.result?.alarms ?? 3;
+    const lines = [s.shareDailyTitle(day), this.prismjack.shots.map((shot) => shotEmoji(shot)).join('')];
+    lines.push(won ? s.shareWon(this.tests, '🚨'.repeat(level) + '⚪'.repeat(3 - level)) : s.shareCaught(this.tests));
+    if (won && this.mode.kind === 'daily' && this.progress.dailyStreak > 1) lines.push(s.shareStreak(this.progress.dailyStreak));
+    lines.push(SHARE_URL);
+    return lines.join('\n');
+  }
+
+  /** Last share result, shown on the button for a moment. */
+  shareOutcome = $state<ShareOutcome | null>(null);
+  /** The picture to share, drawn when the end dialog opens (preview shown in the dialog). */
+  shareImage = $state.raw<{ blob: Blob; url: string } | null>(null);
+
+  /** The picture's content: the room with the torches lit in order, never the jewels. */
+  shareCard(): ShareCard {
+    const s = this.s;
+    const { board, pillars = [] } = this.prismjack.puzzle;
+    const base = { board, pillars, shots: this.prismjack.shots, title: s.title, url: SHARE_URL.replace('https://', '') };
+    if (this.mode.kind === 'run') {
+      const rooms = this.mode.step;
+      return { ...base, subtitle: s.shareRunTitle.replace(/^Prismjack · /, ''), result: s.shareCardRun(rooms), alarms: null, extra: s.shareCardBest(Math.max(this.progress.runBest, rooms)) };
+    }
+    const day = this.mode.kind === 'daily' ? this.mode.day.split('-').reverse().join('/') : '';
+    const won = this.prismjack.status === 'success';
+    const streak = won && this.progress.dailyStreak > 1 ? s.shareStreak(this.progress.dailyStreak).replace('🔥 ', '') : '';
+    return {
+      ...base, subtitle: s.shareDailyTitle(day).replace(/^Prismjack · /, ''),
+      result: won ? s.shareCardWon(this.tests) : s.shareCardCaught(this.tests),
+      alarms: won ? (this.result?.alarms ?? 0) : 3, extra: streak,
+    };
+  }
+
+  async prepareShareImage(): Promise<void> {
+    if (this.shareImage) URL.revokeObjectURL(this.shareImage.url);
+    this.shareImage = null;
+    try {
+      const blob = await renderShareCard(this.shareCard());
+      this.shareImage = { blob, url: URL.createObjectURL(blob) };
+    } catch {
+      this.shareImage = null; // the text alone is still shared
+    }
+  }
+
+  async shareResult(): Promise<void> {
+    this.shareOutcome = await this.deps.sharer.share(this.shareText(), this.shareImage?.blob);
+    setTimeout(() => (this.shareOutcome = null), 2500);
   }
 
   // ---------- settings & tips ----------
@@ -352,9 +469,10 @@ export class GameController {
   }
 
   /** End of the first-launch tutorial: a training room, or straight to the prismjack already set up. */
-  endTutorial(train: boolean): void {
+  /** End of the tutorial: straight into level 1, or back to the home menu. */
+  endTutorial(play: boolean): void {
     this.tutorial = false;
-    if (train) this.start({ kind: 'training', level: 1 });
+    if (play) this.startLevel(0);
     else this.dialog = 'none';
   }
 
@@ -370,16 +488,17 @@ export class GameController {
     this.progress = await resetProgress(this.deps.progress);
     this.deps.sound.setEnabled(this.settings.sound);
     this.tipsShown = [];
-    this.start(this.firstMode());
+    this.screen = 'home';
     // Exactly like a first launch: the welcome card, with the language choice.
     this.dialog = 'welcome';
   }
 
   /** A training tip, given once per room (null outside training or if already given). */
   private takeTip(event: TipEvent): string | null {
-    if (this.mode.kind !== 'training' || this.tipsShown.includes(event)) return null;
+    // The thief only coaches during the first three levels.
+    if (this.mode.kind !== 'level' || this.mode.index > 2 || this.tipsShown.includes(event)) return null;
     this.tipsShown.push(event);
-    return tipText(event, this.mode.level, this.s);
+    return tipText(event, this.s);
   }
 
   private tip(event: TipEvent): void {

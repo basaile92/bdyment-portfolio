@@ -1,6 +1,6 @@
 <script lang="ts">
   /** Small line icons for the interface buttons. */
-  export type UiIconName = 'undo' | 'redo' | 'trash' | 'menu' | 'settings' | 'help' | 'check' | 'share';
+  export type UiIconName = 'undo' | 'redo' | 'trash' | 'menu' | 'settings' | 'help' | 'check' | 'share' | 'back';
 
   let { name, size = 22 }: { name: UiIconName; size?: number } = $props();
 </script>
@@ -18,6 +18,8 @@
     <path d="M10.3 2.6h3.4l.5 2.5 1.8.8 2.1-1.4 2.4 2.4-1.4 2.1.8 1.8 2.5.5v3.4l-2.5.5-.8 1.8 1.4 2.1-2.4 2.4-2.1-1.4-1.8.8-.5 2.5h-3.4l-.5-2.5-1.8-.8-2.1 1.4-2.4-2.4 1.4-2.1-.8-1.8-2.5-.5v-3.4l2.5-.5.8-1.8-1.4-2.1 2.4-2.4 2.1 1.4 1.8-.8z" stroke-width="2" /><circle cx="12" cy="12" r="3.2" stroke-width="2" />
   {:else if name === 'help'}
     <path d="M9.2 9a3 3 0 115.6 1.5c-.9 1-2.8 1.6-2.8 3.5" /><circle cx="12" cy="18.5" r=".6" fill="currentColor" />
+  {:else if name === 'back'}
+    <path d="M15 4.5L7.5 12l7.5 7.5" stroke-width="2.8" />
   {:else if name === 'check'}
     <path d="M5 12.5l4.5 4.5L19 7.5" />
   {:else}

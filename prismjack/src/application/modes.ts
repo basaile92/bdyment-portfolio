@@ -1,18 +1,54 @@
-import { PRISMJACK_JEWELS, SHAPES, type JewelSpec } from '../domain';
+import { EXPERT_POOL, HARD_POOL, LEVEL_ROOMS, MEDIUM_POOL, ROOM_VARIANTS, type StoredRoom } from '../domain';
 
+/**
+ * The three kinds of game:
+ *  - level: the 30 campaign rooms, unlocked one by one (1-10 easy, 11-20 medium, 21-30 hard);
+ *  - daily: one hard room a day, the same for everybody, a single attempt;
+ *  - run: rooms one after another, from medium to ever harder, until the first failure.
+ */
 export type PrismjackMode =
-  | { readonly kind: 'training'; readonly level: 1 | 2 | 3 }
+  | { readonly kind: 'level'; readonly index: number }
   | { readonly kind: 'daily'; readonly day: string }
-  | { readonly kind: 'free' };
+  | { readonly kind: 'run'; readonly step: number };
 
-const TRAINING: Record<1 | 2 | 3, readonly JewelSpec[]> = {
-  1: [{ shape: SHAPES.diamond, color: 'yellow' }],
-  2: [{ shape: SHAPES.diamond, color: 'yellow' }, { shape: SHAPES.legTriangle, color: 'red' }],
-  3: [{ shape: SHAPES.smallTriangle, color: 'blue' }, { shape: SHAPES.legTriangle, color: 'red' }, { shape: SHAPES.trapezoid, color: 'white' }],
-};
+export const LEVEL_COUNT = LEVEL_ROOMS.length;
+export type LevelTier = 'easy' | 'medium' | 'hard';
 
-export function jewelsFor(mode: PrismjackMode): readonly JewelSpec[] {
-  return mode.kind === 'training' ? TRAINING[mode.level] : PRISMJACK_JEWELS;
+export function levelTier(index: number): LevelTier {
+  return index < 10 ? 'easy' : index < 20 ? 'medium' : 'hard';
+}
+
+/** Endless run: 3 medium rooms, 4 hard ones, then expert rooms for as long as the player lasts. */
+export function runPool(step: number): readonly StoredRoom[] {
+  if (step < 3 && MEDIUM_POOL.length) return MEDIUM_POOL;
+  if (step < 7 && HARD_POOL.length) return HARD_POOL;
+  return EXPERT_POOL.length ? EXPERT_POOL : HARD_POOL;
+}
+
+/** A room and its mirror variant. */
+export interface RoomPick {
+  readonly room: StoredRoom;
+  readonly variant: number;
+}
+
+function pickIn(pool: readonly StoredRoom[], n: number): RoomPick {
+  const total = pool.length * ROOM_VARIANTS;
+  const i = ((n % total) + total) % total;
+  const room = pool[Math.floor(i / ROOM_VARIANTS)];
+  if (!room) throw new Error('Empty room pool.');
+  return { room, variant: i % ROOM_VARIANTS };
+}
+
+/** Which room a mode plays. `random` in [0, 1) is only used by the run. */
+export function roomFor(mode: PrismjackMode, random: number): RoomPick {
+  if (mode.kind === 'level') {
+    const room = LEVEL_ROOMS[mode.index] ?? LEVEL_ROOMS[0];
+    if (!room) throw new Error('No campaign level.');
+    return { room, variant: 0 };
+  }
+  if (mode.kind === 'daily') return pickIn(HARD_POOL, dailySeed(mode.day));
+  const pool = runPool(mode.step);
+  return pickIn(pool, Math.floor(random * pool.length * ROOM_VARIANTS));
 }
 
 /** Local calendar day, "YYYY-MM-DD". */

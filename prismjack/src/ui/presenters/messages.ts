@@ -1,5 +1,6 @@
 import type { Shot } from '../../application';
 import type { Strings } from '../i18n/strings';
+import { ABSORBED } from '../../domain';
 import { laserDescription, laserFill } from './palette';
 
 /** What the thief says in his bubble. Pure data: the view decides how to style it. */
@@ -37,14 +38,14 @@ export function speak(speech: Speech, s: Strings): SpeechPart[] {
       return [{ text: speech.text }];
     case 'shot': {
       const parts = describeShot(speech.number, speech.shot, s);
-      return speech.tip ? [...parts, { text: ` ${speech.tip}`, tone: 'good' }] : parts;
+      return speech.tip ? [...parts, { text: `${s.sentenceGap}${speech.tip}`, tone: 'good' }] : parts;
     }
     case 'cleared':
       return [{ text: say.cleared }];
     case 'empty-plan':
       return [{ text: say.emptyPlan, tone: 'bad' }];
     case 'alarm':
-      return [{ text: say.alarm, tone: 'bad' }, { text: ' ' }, { text: say.alarmUp(speech.level), strong: true }];
+      return [{ text: say.alarm, tone: 'bad' }, { text: s.sentenceGap }, { text: say.alarmUp(speech.level), strong: true }];
     case 'caught':
       return [{ text: say.caught, tone: 'bad' }];
     case 'success':
@@ -53,10 +54,11 @@ export function speak(speech: Speech, s: Strings): SpeechPart[] {
 }
 
 function describeShot(number: number, shot: Shot, s: Strings): SpeechPart[] {
+  if (shot.exit === ABSORBED) return [{ text: s.speech.absorbed(number) }];
   const color = shot.color === 0 ? {} : { swatch: laserFill(shot.color) };
   return [
     { text: s.speech.shot(number, shot.exit === shot.entry) },
     { text: laserDescription(shot.color, s), strong: true, ...color },
-    { text: '.' },
+    { text: s.fullStop },
   ];
 }

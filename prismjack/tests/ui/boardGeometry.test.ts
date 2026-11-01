@@ -45,3 +45,13 @@ describe('colour names', () => {
   it('lists mixed colours without blending them', () => expect(laserDescription(maskOf('red', 'blue'), fr)).toBe('rouge + bleu'));
   it('keeps simple colours short', () => expect(laserDescription(maskOf('yellow'), fr)).toBe('jaune'));
 });
+
+describe('border of the room', () => {
+  const board = { width: 8, height: 10 };
+  it('just outside the grid still means the edge cell, the torch answers further out', async () => {
+    const { EDGE_GRACE } = await import('../../src/ui/presenters/boardGeometry');
+    const near = hitTest(board, { x: BAND - EDGE_GRACE / 2, y: BAND + 2.5 });
+    expect(near).toMatchObject({ kind: 'cell', x: 0, y: 2, u: 0 });
+    expect(hitTest(board, { x: BAND - EDGE_GRACE - 0.05, y: BAND + 2.5 })?.kind).toBe('port');
+  });
+});

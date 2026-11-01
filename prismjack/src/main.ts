@@ -5,6 +5,8 @@
 import { Capacitor } from '@capacitor/core';
 import { mount } from 'svelte';
 import { DeviceHaptics } from './adapters/DeviceHaptics';
+import { DeviceSharer } from './adapters/DeviceSharer';
+import { appStoreUrl } from './ui/appStore';
 import { NativeProgressStore } from './adapters/NativeProgressStore';
 import { SeededRandom } from './adapters/SeededRandom';
 import { WebAudioSound } from './adapters/WebAudioSound';
@@ -20,6 +22,8 @@ const game = new GameController({
   randomFor: (seed) => (seed === null ? SeededRandom.fromClock() : new SeededRandom(seed)),
   progress: native ? new NativeProgressStore() : new WebProgressStore(),
   haptics: new DeviceHaptics(native),
+  sharer: new DeviceSharer(native),
+  appStoreUrl: appStoreUrl(import.meta.env.VITE_APP_STORE_ID, native, navigator),
   sound: new WebAudioSound(),
   today: () => new Date(),
   deviceLanguage: detectLanguage(navigator.language),

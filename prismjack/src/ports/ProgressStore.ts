@@ -1,4 +1,4 @@
-export type Language = 'fr' | 'en';
+export type Language = 'fr' | 'en' | 'es' | 'de' | 'it' | 'pt' | 'ja' | 'ko' | 'zh';
 
 export interface Settings {
   readonly sound: boolean;
@@ -11,8 +11,10 @@ export interface Settings {
 export interface Progress {
   readonly prismjacksWon: number;
   readonly perfectPrismjacks: number;
-  /** Highest training room completed (0 = none, 3 = training done). */
-  readonly trainingDone: number;
+  /** Campaign levels won (indices); the next one after the highest is unlocked. */
+  readonly levelsWon: readonly number[];
+  /** Best endless run: rooms cleared before the first failure. */
+  readonly runBest: number;
   readonly dailyStreak: number;
   readonly lastDailyWon: string | null;
   /** Last daily prismjack finished, won or caught: the app then opens on a free prismjack. */
@@ -23,7 +25,8 @@ export interface Progress {
 export const NO_PROGRESS: Progress = {
   prismjacksWon: 0,
   perfectPrismjacks: 0,
-  trainingDone: 0,
+  levelsWon: [],
+  runBest: 0,
   dailyStreak: 0,
   lastDailyWon: null,
   lastDailyPlayed: null,

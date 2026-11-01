@@ -14,7 +14,7 @@
 {/if}
 
 <style>
-  .backdrop { position: fixed; inset: 0; background: rgba(6, 8, 28, 0.82); display: flex; align-items: center; justify-content: center; padding: 18px; z-index: 10; }
+  .backdrop { position: fixed; inset: 0; background: rgba(6, 8, 28, 0.82); display: flex; align-items: center; justify-content: center; padding: 18px; z-index: 40; }
   .card {
     background: linear-gradient(180deg, #1f2770, #141a4a); border: 3px solid var(--edge); border-radius: 24px; padding: 20px;
     max-width: 420px; width: 100%; max-height: 88vh; overflow: auto; display: flex; flex-direction: column; gap: 10px;

@@ -23,6 +23,8 @@ export interface PrismjackState {
   readonly emptyCells: ReadonlySet<number>;
   /** Ports that disagreed with the plan at the last wrong submission (cleared when the plan changes). */
   readonly mismatches: readonly PortId[];
+  /** Prism pillars: how many times each one has moved on (index = pillar). */
+  readonly pillarStates: readonly number[];
   readonly status: PrismjackStatus;
 }
 

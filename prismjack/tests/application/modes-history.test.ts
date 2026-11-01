@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  testsLimit, dailySeed, dayOf, drawSurface, EMPTY_HISTORY, fireLaser, jewelsFor, missingJewels, previousDay,
+  testsLimit, dailySeed, dayOf, drawSurface, EMPTY_HISTORY, fireLaser, LEVEL_COUNT, missingJewels, roomFor, startMode, unlockedLevels, previousDay,
   recordCaught, recordPrismjack, redo, resetProgress, untilNextDay, remember, startPrismjack, submitPlan, undo,
 } from '../../src/application';
 import { SeededRandom } from '../../src/adapters/SeededRandom';
@@ -55,7 +55,7 @@ describe('modes', () => {
   });
 
   it('starts training with a single jewel', () => {
-    const s = startPrismjack(new SeededRandom(2), { jewels: jewelsFor({ kind: 'training', level: 1 }) });
+    const s = startMode({ kind: 'level', index: 0 }, new SeededRandom(2));
     expect(s.puzzle.jewels).toHaveLength(1);
     expect(missingJewels(s)).toBe(1);
     expect(missingJewels({ ...s, plan: s.puzzle.surfaces })).toBe(0);
@@ -95,16 +95,29 @@ describe('progress', () => {
 
   it('marks the daily prismjack as played, won or caught, but not a free one', async () => {
     const store = new MemoryStore();
-    await recordCaught(store, { kind: 'free' });
+    await recordCaught(store, { kind: 'run', step: 4 });
     expect(store.value.lastDailyPlayed).toBeNull();
     await recordCaught(store, { kind: 'daily', day: '2026-10-31' });
     expect(store.value.lastDailyPlayed).toBe('2026-10-31');
     expect(store.value.lastDailyWon).toBeNull();
   });
 
-  it('remembers the training progress', async () => {
+  it('unlocks levels one by one and remembers the best run', async () => {
     const store = new MemoryStore();
-    await recordPrismjack(store, 3, { kind: 'training', level: 2 });
-    expect(store.value.trainingDone).toBe(2);
+    expect(unlockedLevels(store.value, LEVEL_COUNT)).toBe(1);
+    await recordPrismjack(store, 1, { kind: 'level', index: 0 });
+    expect(store.value.levelsWon).toEqual([0]);
+    expect(unlockedLevels(store.value, LEVEL_COUNT)).toBe(2);
+    await recordCaught(store, { kind: 'run', step: 4 });
+    expect(store.value.runBest).toBe(4);
+    await recordCaught(store, { kind: 'run', step: 2 });
+    expect(store.value.runBest).toBe(4);
+  });
+
+  it('plays the stored rooms: same daily heist for everybody, levels in order', () => {
+    const a = roomFor({ kind: 'daily', day: '2026-11-02' }, 0.1);
+    const b = roomFor({ kind: 'daily', day: '2026-11-02' }, 0.9);
+    expect(a).toEqual(b);
+    expect(startMode({ kind: 'level', index: 0 }, { next: () => 0 }).jewels).toHaveLength(1);
   });
 });

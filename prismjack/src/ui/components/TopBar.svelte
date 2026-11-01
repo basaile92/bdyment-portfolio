@@ -6,9 +6,10 @@
 
   const subtitle = $derived.by(() => {
     const m = game.mode;
-    if (m.kind === 'training') return game.s.modeTraining(m.level);
+    if (game.screen !== 'game') return '';
+    if (m.kind === 'level') return game.s.modeLevel(m.index + 1);
     if (m.kind === 'daily') return game.s.modeDaily(m.day.split('-').reverse().slice(0, 2).join('/'));
-    return game.s.modeFree;
+    return game.s.modeRun(m.step + 1);
   });
 
   /** The title lines up with the board's left edge, the buttons mirror it on the right. */
@@ -35,9 +36,9 @@
 
 <header class="bar">
   <div class="inner" style="padding-inline: {edge}px">
+    {#if game.screen === 'game'}<button class="back" aria-label={game.s.backHome} onclick={() => game.goHome()}><UiIcon name="back" size={24} /></button>{/if}
     <div class="title"><h1>{game.s.title}</h1></div>
     <span class="mode">{subtitle}</span>
-    <button class="icon" aria-label={game.s.menuButton} onclick={() => game.requestMenu()}><UiIcon name="menu" /></button>
     <button class="icon" aria-label={game.s.settingsButton} onclick={() => (game.dialog = 'settings')}><UiIcon name="settings" /></button>
     <button class="icon" aria-label={game.s.helpButton} onclick={() => (game.dialog = 'help')}><UiIcon name="help" /></button>
   </div>
@@ -51,5 +52,6 @@
   .title { position: relative; }
   h1 { margin: 0; font-family: var(--title-font); font-weight: 400; font-size: 20px; line-height: 1; color: var(--gold); white-space: nowrap; }
   .mode { flex: 1; min-width: 0; font-size: 12px; font-weight: 800; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px; }
+  .back { flex: none; width: 40px; height: 44px; margin-left: -8px; padding: 0; border: none; background: none; color: #fff; display: flex; align-items: center; justify-content: center; }
   .icon { flex: none; width: 44px; height: 44px; border-radius: 22px; border: 2px solid var(--edge); background: var(--slot); display: flex; align-items: center; justify-content: center; }
 </style>

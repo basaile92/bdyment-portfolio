@@ -2,7 +2,7 @@ import { NO_PROGRESS, type Progress, type ProgressStore, type Settings } from '.
 import { previousDay, type PrismjackMode } from './modes';
 
 function afterWin(p: Progress, mode: PrismjackMode): Progress {
-  if (mode.kind === 'training') return { ...p, trainingDone: Math.max(p.trainingDone, mode.level) };
+  if (mode.kind === 'level') return p.levelsWon.includes(mode.index) ? p : { ...p, levelsWon: [...p.levelsWon, mode.index] };
   if (mode.kind !== 'daily' || p.lastDailyWon === mode.day) return p;
   const streak = p.lastDailyWon === previousDay(mode.day) ? p.dailyStreak + 1 : 1;
   return { ...p, dailyStreak: streak, lastDailyWon: mode.day };
@@ -19,11 +19,18 @@ export async function recordPrismjack(store: ProgressStore, alarms: number, mode
   return next;
 }
 
-/** The guard caught the thief: a daily prismjack still counts as played today. */
+/** The guard caught the thief: a daily prismjack still counts as played today; a run ends here. */
 export async function recordCaught(store: ProgressStore, mode: PrismjackMode): Promise<Progress> {
-  const next = played(await store.load(), mode);
+  const p = played(await store.load(), mode);
+  const next = mode.kind === 'run' && mode.step > p.runBest ? { ...p, runBest: mode.step } : p;
   await store.save(next);
   return next;
+}
+
+/** Levels that can be played: every level won, plus the one after the highest won. */
+export function unlockedLevels(p: Progress, count: number): number {
+  const highest = p.levelsWon.length ? Math.max(...p.levelsWon) : -1;
+  return Math.min(count, highest + 2);
 }
 
 export async function saveSettings(store: ProgressStore, settings: Settings): Promise<Progress> {

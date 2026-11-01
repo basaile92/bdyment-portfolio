@@ -1,9 +1,10 @@
-import { cellAt, facetKey } from '../domain';
+import { cellAt, facetKey, pillarCells } from '../domain';
 import type { PrismjackState } from './PrismjackState';
 
 /** Marks (or unmarks) a cell as certainly empty. Marking it removes any facet drawn inside. */
 export function markEmpty(state: PrismjackState, cell: number, empty: boolean): PrismjackState {
   if (state.status !== 'planning' || state.emptyCells.has(cell) === empty) return state;
+  if (pillarCells(state.puzzle.board, state.puzzle.pillars).has(cell)) return state;
   const emptyCells = new Set(state.emptyCells);
   if (!empty) {
     emptyCells.delete(cell);

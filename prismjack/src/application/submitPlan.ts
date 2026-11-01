@@ -15,8 +15,8 @@ export function missingJewels(state: PrismjackState): number {
 export function submitPlan(state: PrismjackState): SubmitResult {
   if (state.status !== 'planning') return { kind: 'caught', state };
   if (state.plan.size === 0) return { kind: 'empty-plan', state };
-  const { board, surfaces } = state.puzzle;
-  const mismatches = mismatchingPorts(board, surfaces, state.plan);
+  const { board, surfaces, pillars } = state.puzzle;
+  const mismatches = mismatchingPorts(board, surfaces, state.plan, { pillars, history: state.shots.map((s) => s.entry) });
   if (mismatches.length > 0) {
     const next = withAlarmChecked({ ...state, wrongPlans: state.wrongPlans + 1, mismatches });
     return next.status === 'caught' ? { kind: 'caught', state: next } : { kind: 'alarm', state: next, mismatches };

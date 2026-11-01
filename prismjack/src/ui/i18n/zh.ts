@@ -1,0 +1,262 @@
+import type { Strings } from './strings';
+import type { TutorialPage } from './tutorial';
+
+/** The game passes days as dd/mm or dd/mm/yyyy; written here the local way. */
+const zhDate = (date: string): string => {
+  const [d, m, y] = date.split('/').map((part) => Number(part));
+  if (!d || !m) return date;
+  return `${y ? `${y}年` : ''}${m}月${d}日`;
+};
+
+const TUTORIAL: readonly TutorialPage[] = [
+  {
+    id: 'lore',
+    title: '故事',
+    body: [
+      '你是 **Prismjack**，一名怪盜。珠寶店的霧面玻璃天窗下藏著幾顆**寶石**。你什麼都看不見：只能**靠手電筒**把它們找出來。',
+    ],
+  },
+  {
+    id: 'goal',
+    title: '目標',
+    body: [
+      '展間下方的**戰利品**列出每顆寶石的形狀和顏色（可能經過旋轉或翻面）。**把每顆寶石畫在正確的位置**，然後按下 **GO**。',
+    ],
+  },
+  {
+    id: 'torch',
+    title: '手電筒',
+    body: [
+      '點一支**手電筒**：光線會**筆直**穿過展間，並點亮光線射出處的手電筒，標上相同的編號。',
+      '光線從**正對面射出、沒有顏色**（手電筒被劃掉）：整條線都是**空的**。路徑是雙向的：再點一次已亮的手電筒不算新的測試。',
+    ],
+  },
+  {
+    id: 'wall',
+    title: '直牆',
+    body: [
+      '寶石的**直邊**就是直牆：光線會**回到原本的手電筒**，標示為 **↩**。',
+      '↩ 一定代表**碰到直牆**，有時是在轉彎之後。',
+    ],
+  },
+  {
+    id: 'facet',
+    title: '切面',
+    body: [
+      '**斜邊**就是切面：光線會**直角轉彎**。只轉一次彎？切面就在**兩條線的交會處**。',
+      '在半格裡，光線從**開口側**進入就會轉彎，碰到**直邊**則會折返（↩）。光線射出前可能轉好幾次彎。',
+    ],
+  },
+  {
+    id: 'colors',
+    title: '顏色',
+    body: [
+      '每碰到一顆寶石，就**加上它的顏色**：手電筒會並排顯示所有碰到的顏色。',
+      '**白色**也是一種寶石顏色；**沒有顏色**（手電筒被劃掉）代表「什麼都沒碰到」。',
+    ],
+  },
+  {
+    id: 'shapes',
+    title: '繪製',
+    body: [
+      '**繪製**：點格子**靠近邊緣**畫直牆，**靠近中心**畫切面。**空格**標記安全的格子，**橡皮擦**用來擦除。',
+      '兩顆寶石**絕不會直邊貼直邊**（角對角或斜邊相鄰可以），也不會共用同一格。',
+    ],
+  },
+  {
+    id: 'go',
+    title: 'GO 與警報',
+    body: [
+      '你的計畫必須**對每支手電筒都得出和展間相同的結果**，連沒點過的也一樣，**GO** 才會成功：沒把握就測試。',
+      '超過量表的**標記**會讓警報升一級，計畫錯誤也會。**到 3 級，警衛就來了。**',
+    ],
+  },
+  {
+    id: 'pillars',
+    title: '柱子',
+    body: [
+      '有些展間有**柱子**，一開始就看得到。**黑柱**：吞掉光線。**透明柱**：反射光線但不上色。',
+      '**稜鏡**：以**圈起來的圓點**的顏色反射光線；每次測試碰到它後，圓點就前進一格（圖示為測試後的狀態）。測試的順序很重要；如果圓點沒動，就表示它跟這次無關。',
+    ],
+  },
+  {
+    id: 'method',
+    title: '技巧',
+    body: [
+      '先從**各邊的中間**開始：每條空線都能排除一些位置。把每個結果和**戰利品的形狀**對照，再**測試能區分**各種假設的那支手電筒。',
+    ],
+  },
+];
+
+export const zh: Strings = {
+  colors: { red: '紅色', blue: '藍色', yellow: '黃色', white: '白色' },
+  laserNames: [
+    '透明', '紅色', '藍色', '紫色', '黃色', '橘色', '綠色', '棕色',
+    '白色', '淺紅色', '淺藍色', '淺紫色', '淺黃色', '淺橘色', '淺綠色', '淺棕色',
+  ],
+
+  title: 'PRISMJACK',
+  fullStop: '。',
+  sentenceGap: '',
+  modeDaily: (day) => `每日盜寶 ${zhDate(day)}`,
+  modeLevel: (n) => `第 ${n} 關`,
+  modeRun: (n) => `連闖 · 第 ${n} 間`,
+  home: {
+    tagline: '手電筒下的盜寶',
+    appStore: '免費 · App Store',
+    appGet: '取得',
+    appClose: '關閉',
+    levels: '關卡',
+    levelsSub: (won, total) => `已過 ${won} / ${total} 關`,
+    daily: '每日盜寶',
+    dailyOpen: '高難度博物館，人人相同，只有一次機會',
+    dailyDone: (next) => `已玩過。下次盜寶在 ${next}後`,
+    streak: (n) => `連續紀錄：${n} 天`,
+    run: '連闖',
+    runSub: (best) => (best > 0 ? `展間越來越難 · 最佳紀錄 ${best} 間` : '展間越來越難，直到第一次失敗'),
+    tutorial: '教學',
+    tutorialSub: '故事與所有規則，附圖說明',
+    settings: '設定',
+    easy: '簡單',
+    medium: '普通',
+    hard: '困難',
+    locked: '通過上一關即可解鎖',
+    levelLabel: (n, state) => `第 ${n} 關${state === 'won' ? '，已通過' : state === 'locked' ? '，未解鎖' : ''}`,
+  },
+  runOver: (rooms, best) => `連闖結束：通過 ${rooms} 間展間。最佳紀錄：${best} 間。`,
+  levelIntro: [
+    '第 1 關：只有一顆寶石，紅色正方形。它的邊都是直牆：碰到它的光線會直接回到原本的手電筒（↩）。找到它、畫出來，然後 GO。',
+    '第 2 關：黃色菱形。它的邊都是斜的切面：碰到它的光線會直角轉彎，從另一側射出。',
+    '第 3 關：紅色三角形，兩面直牆加一個切面。依碰到的那一邊，光線會折返或轉彎。',
+    '第 4 關：兩顆不同顏色的寶石。光線的顏色會告訴你它碰到了哪一顆。',
+    '第 5 關：碰到兩顆寶石的光線，射出時會並排帶著兩種顏色。一次次反彈，跟著它的路徑走。',
+    '第 6 關：一根看得見的黑柱。它會吞掉光線：手電筒保持黑色，什麼都不會射出。拿它當參考點吧。',
+    '第 7 關：一根透明柱。它像寶石一樣反射光線，但不上色：所以透明的光線也可能反彈過。',
+    '第 8 關：一個稜鏡。它會給出目前的顏色（大圓點），每次測試碰到它後就換成下一個顏色。測試的順序很重要。',
+    '第 9 關：兩顆黃色寶石。只能靠形狀分辨：從反彈推敲出來吧。',
+    '第 10 關：三顆寶石和一根黑柱。測試次數有限：超過量表上的標記，警報就會升級。',
+  ],
+  levelGeneric: (n) => `第 ${n} 關 · ${n <= 20 ? '普通' : '困難'}。慢慢來：每次測試都該讓你學到些什麼。`,
+  dailyIntro: '每日盜寶：高難度博物館，每個人都一樣，只有一次機會。',
+  runIntro: (n) => `連闖，第 ${n} 間。失敗一次就結束：每間展間都會更難一點。`,
+  backHome: '選單',
+  nextRoom: '下一間',
+  newRun: '重新開始',
+  nextLevel: '下一關',
+  settingsButton: '設定',
+  helpButton: '說明',
+
+  room: '展間',
+  boardLabel: '博物館展間。用方向鍵移動，按 Enter 點亮手電筒。',
+  cellAt: (x, y) => `第 ${x} 欄，第 ${y} 列的格子`,
+  emitterAt: (i, side) => `${{ top: '上', bottom: '下', left: '左', right: '右' }[side]}側第 ${i} 支手電筒`,
+  announceShot: (back, color) => `測試：光線${back ? '回到同一支手電筒' : '從別處射出'}，呈${color}`,
+
+  speech: {
+    intro: '我們進來了。點亮牆上的一支**手電筒**來探測展間。',
+    absorbed: (n) => `測試 ${n}：光線被黑柱吞掉了，什麼都沒射出。`,
+    shot: (n, back) => `測試 ${n}：${back ? '光線回到原本的手電筒，呈' : '光線從圈起來的手電筒射出，呈'}`,
+    cleared: '計畫已清除。測試結果我留著。',
+    emptyPlan: '沒有計畫，就沒有盜寶！先畫出寶石。',
+    alarm: '糟了，警報！你的計畫不對。',
+    alarmUp: (level) => `警報 ${level}/3${level >= 2 ? '：再一次警衛就來了！' : '。'}`,
+    caught: '警衛來了……快拉我上去！',
+    successLead: '得手了！',
+    successRest: '寶石原本在這些位置。',
+  },
+  tips: {
+    firstShot: '光線射出處的手電筒會亮起，起點的也會。點其中一支，就能看到與它成對的另一支。',
+    colored: '有顏色：光線碰到了寶石。直牆會把它彈回去，切面會讓它直角轉彎。',
+    transparent: '透明：這條路徑上沒有寶石。整條線都是空的！',
+    back: '↩：光線回到了起點。它正面撞上了直牆。',
+    firstDraw: '靠近格子邊緣：直牆。靠近中心：切面。放開前滑動可以調整。',
+    jewelDrawn: '大小和顏色都正確的封閉形狀：已在戰利品中打勾！',
+    allDrawn: '所有寶石都畫好了。如果你的計畫能解釋每次測試：GO！',
+  },
+
+  gaugeLabel: '已用測試次數與警報等級',
+  tests: (n) => `**${n}** 次測試`,
+  quietUntil: (n) => `超過 ${n} 次測試就觸發警報`,
+  alarmHint: '超過標記時警報升一級，每次計畫錯誤也會。到 3 級，警衛就來了。',
+  alarmLevel: (n) => `警報 ${n}/3`,
+
+  loot: '戰利品',
+  lootLabel: (found, total) => `戰利品：已畫出 ${found} / ${total} 顆寶石`,
+  jewelNamed: (color) => `${color}寶石`,
+
+  trace: '繪製',
+  empty: '空格',
+  eraser: '橡皮擦',
+  undo: '復原',
+  redo: '重做',
+  clearPlan: '清除計畫',
+  jewelColorGroup: '要繪製的寶石顏色',
+  go: 'GO！',
+  goSub: '開始盜寶',
+  next: '下一步',
+  retry: '再試一次',
+
+  welcomeTitle: '歡迎，怪盜',
+  welcomeText:
+    '展間裡藏著寶石。從邊緣點亮你的手電筒：光線碰到寶石會反彈，射出時帶上寶石的顏色。推敲出它們的輪廓，畫出來，然後展開盜寶。',
+  welcomeKnow: '開始玩',
+  welcomeLearn: '教學',
+  tutorialPlay: '開始玩',
+  clearTitle: '清除整個計畫？',
+  clearText: '你畫的線和空格會被刪除，測試結果會保留。之後可以復原。',
+  keep: '保留',
+  erase: '清除',
+  incompleteTitle: '計畫不完整',
+  incompleteText: (m) =>
+    `你的計畫還少 ${m} 顆寶石（顏色和大小都正確的封閉形狀）。如果計畫錯誤，警報會升一級（到 3 級，警衛就來了）。`,
+  continuePlan: '繼續規劃',
+  goAnyway: '照樣 GO',
+
+  winTitle: '盜寶成功！',
+  winAlarmLabel: (n) => `警報 ${n}/3`,
+  winText: (tests, level) => `用 **${tests}** 次測試拿到戰利品，警報 **${level}/3**。`,
+  winVerdict: (level) => ['完美盜寶：沒有人聽到任何動靜。', '警報響了一次，但你還是全數帶走了。', '好險：警衛就在旁邊！'][level] ?? '',
+  streakLine: (streak, next) => `連續紀錄：**${streak} 天** · 下次每日盜寶：**${next}**後`,
+  copied: '已複製！',
+  seeRoom: '查看展間',
+  caughtTitle: '被發現了！',
+  caughtText: (daily) => `警報 3/3：警衛到了。看看寶石原本在哪裡${daily ? '。' : '，然後再試一次。'}`,
+  shareDailyTitle: (day) => (day ? `Prismjack · 每日盜寶 ${zhDate(day)}` : 'Prismjack'),
+  shareWon: (tests, lamps) => `✅ 以 ${tests} 次測試得手 · ${lamps}`,
+  shareCaught: (tests) => `🚨 ${tests} 次測試後被警衛抓到`,
+  shareStreak: (n) => `🔥 連續紀錄：${n} 天`,
+  shareRunTitle: 'Prismjack · 連闖',
+  shareRun: (rooms, best) => `🏁 通過 ${rooms} 間展間 · 最佳紀錄 ${best} 間`,
+  shareCardWon: (tests) => `以 ${tests} 次測試得手`,
+  shareCardCaught: (tests) => `${tests} 次測試後被抓`,
+  shareCardRun: (rooms) => `通過 ${rooms} 間展間`,
+  shareCardBest: (best) => `最佳紀錄：${best} 間`,
+  share: '分享成績',
+  shared: '已分享！',
+  duration: (h, m) => (h > 0 ? `${h} 小時 ${String(m).padStart(2, '0')} 分` : `${m} 分鐘`),
+
+  dailyOpen: '人人相同的博物館，只有一次機會',
+  dailyDone: (next) => `每天一次機會：下一次在 ${next}後`,
+  streak: (d) => `連續紀錄：${d} 天`,
+  settingsTitle: '設定',
+  sound: '音效',
+  symbols: '顏色符號',
+  symbolsSub: '每種顏色一個形狀（▲ 紅、■ 藍、● 黃、◆ 白），方便不易分辨顏色的玩家',
+  soundSub: '手電筒、警笛、戰利品',
+  language: '語言',
+  resetTitle: '重置',
+  resetSub: '清除所有資料，回到首次啟動的狀態。',
+  resetSure: '確定嗎？已完成的盜寶、連續紀錄、練習和設定都會被清除。',
+  cancel: '取消',
+  reset: '重置',
+  close: '關閉',
+
+  helpTitle: '教學',
+  tutorialPages: TUTORIAL,
+  tutorialWallTap: '靠近邊緣：直牆',
+  tutorialFacetTap: '靠近中心：切面',
+  gotIt: '知道了',
+  previous: '上一頁',
+  next2: '下一頁',
+  helpPage: (p, t) => `第 ${p} / ${t} 頁`,
+};

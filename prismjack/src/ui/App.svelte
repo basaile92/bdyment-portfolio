@@ -5,7 +5,8 @@
   import HelpSheet from './components/HelpSheet.svelte';
   import LanguagePicker from './components/LanguagePicker.svelte';
   import LootRow from './components/LootRow.svelte';
-  import MenuDialog from './components/MenuDialog.svelte';
+  import HomeScreen from './components/HomeScreen.svelte';
+  import LevelsScreen from './components/LevelsScreen.svelte';
   import Modal from './components/Modal.svelte';
   import SettingsDialog from './components/SettingsDialog.svelte';
   import ThiefScene from './components/ThiefScene.svelte';
@@ -57,7 +58,7 @@
 
 <PhoneDiver {game} />
 <HelpSheet {game} />
-<MenuDialog {game} />
+{#if game.screen === 'home'}<HomeScreen {game} />{:else if game.screen === 'levels'}<LevelsScreen {game} />{/if}
 <SettingsDialog {game} />
 <EndDialogs {game} />
 

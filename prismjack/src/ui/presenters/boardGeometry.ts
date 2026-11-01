@@ -9,7 +9,7 @@ export const BAND = 0.85;
 /** Below this distance from a side (in cells), a touch draws a wall; further in, a facet. */
 const WALL_ZONE = 0.27;
 
-export type Tool = 'trace' | 'empty';
+export type Tool = 'trace' | 'empty' | 'erase';
 
 export interface Point {
   readonly x: number;
@@ -72,12 +72,25 @@ function verticalBandPort(board: BoardSize, p: Point): PortId | null {
   return p.x > BAND + board.width ? portFor(board, 'right', row) : null;
 }
 
+/**
+ * Just outside the grid, a pointer still means the edge cell (to draw a wall on the room's border),
+ * not the torch: the torches only answer a little further out.
+ */
+export const EDGE_GRACE = 0.2;
+
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
 export function hitTest(board: BoardSize, p: Point): Hit | null {
   const bx = p.x - BAND;
   const by = p.y - BAND;
   const x = Math.floor(bx);
   const y = Math.floor(by);
   if (isInside(board, x, y)) return { kind: 'cell', x, y, u: bx - x, v: by - y };
+  const near = bx > -EDGE_GRACE && by > -EDGE_GRACE && bx < board.width + EDGE_GRACE && by < board.height + EDGE_GRACE;
+  if (near) {
+    const cx = clamp(x, 0, board.width - 1), cy = clamp(y, 0, board.height - 1);
+    return { kind: 'cell', x: cx, y: cy, u: clamp(bx - cx, 0, 1), v: clamp(by - cy, 0, 1) };
+  }
   const port = horizontalBandPort(board, p) ?? verticalBandPort(board, p);
   return port === null ? null : { kind: 'port', port };
 }

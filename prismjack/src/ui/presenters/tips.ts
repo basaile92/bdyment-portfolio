@@ -1,9 +1,9 @@
 import type { Strings } from '../i18n/strings';
 
-/** Moments of a training room where the thief explains a rule, once. */
-export type TipEvent = 'start' | 'first-shot' | 'colored' | 'transparent' | 'back' | 'first-draw' | 'jewel-drawn' | 'all-drawn';
+/** Moments of the first levels where the thief explains a rule, once. */
+export type TipEvent = 'first-shot' | 'colored' | 'transparent' | 'back' | 'first-draw' | 'jewel-drawn' | 'all-drawn';
 
-const KEYS: Record<Exclude<TipEvent, 'start'>, keyof Strings['tips']> = {
+const KEYS: Record<TipEvent, keyof Strings['tips']> = {
   'first-shot': 'firstShot',
   colored: 'colored',
   transparent: 'transparent',
@@ -13,6 +13,6 @@ const KEYS: Record<Exclude<TipEvent, 'start'>, keyof Strings['tips']> = {
   'all-drawn': 'allDrawn',
 };
 
-export function tipText(event: TipEvent, level: 1 | 2 | 3, s: Strings): string {
-  return event === 'start' ? s.trainingStart[level] : s.tips[KEYS[event]];
+export function tipText(event: TipEvent, s: Strings): string {
+  return s.tips[KEYS[event]];
 }
