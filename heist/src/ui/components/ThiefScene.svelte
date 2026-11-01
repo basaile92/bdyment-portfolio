@@ -80,8 +80,8 @@
 
 <style>
   .scene { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 4px 12px 0; }
-  /* Phones: no thief or bubble, the room gets the space (messages float over it, see SpeechToast). */
-  @media not all and (min-aspect-ratio: 1/1) and (min-width: 640px) {
+  /* Phones only (narrow portrait): no thief or bubble, the room gets the space (messages float over it, see SpeechToast). */
+  @media (max-width: 599px) and (max-aspect-ratio: 1/1) {
     .top { display: none !important; }
   }
   /* PC: hovering the thief lowers him a little on his rope (the bubble stays put), then he climbs back. */

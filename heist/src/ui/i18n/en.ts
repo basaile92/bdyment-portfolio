@@ -75,8 +75,10 @@ export const en: Strings = {
   welcomeTitle: 'Welcome, burglar',
   welcomeText:
     'Five jewels are hidden in the room. Shine your torches from the edges: the light bounces off the jewels and comes out tinted with their colours. Work out their outlines, draw them, then start the heist.',
-  welcomeKnow: 'I know how',
-  welcomeLearn: 'Learn',
+  welcomeKnow: 'Play',
+  welcomeLearn: 'Tutorial',
+  tutorialTrain: 'Practise',
+  tutorialPlay: 'Play',
   languageLabel: 'Language',
 
   clearTitle: 'Clear the whole plan?',

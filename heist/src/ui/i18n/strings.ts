@@ -94,6 +94,8 @@ export interface Strings {
   readonly welcomeText: string;
   readonly welcomeKnow: string;
   readonly welcomeLearn: string;
+  readonly tutorialTrain: string;
+  readonly tutorialPlay: string;
   readonly languageLabel: string;
 
   readonly clearTitle: string;

@@ -48,8 +48,8 @@
   {#each Array.from({ length: Math.round(h / 20) - 1 }, (_, i) => i + 1) as i (i)}<line x1={x} y1={y + i * 20} x2={x + w} y2={y + i * 20} stroke="rgba(170,195,255,.3)" />{/each}
 {/snippet}
 
-<Modal open={game.dialog === 'help'} label={s.helpTitle} onclose={() => (game.dialog = 'none')}>
-  <h2>{s.helpTitle}</h2>
+<Modal open={game.dialog === 'help'} label={s.helpTitle} onclose={() => (game.tutorial ? game.endTutorial(false) : (game.dialog = 'none'))}>
+  <h2>{game.tutorial ? s.welcomeLearn : s.helpTitle}</h2>
   <div class="dots" aria-label={s.helpPage(page + 1, PANELS.length)}>
     {#each PANELS as id, i (id)}<button class:on={i === page} aria-label={s.helpPage(i + 1, PANELS.length)} onclick={() => (page = i)}></button>{/each}
   </div>
@@ -151,7 +151,10 @@
 
   <div class="row nav">
     {#if page > 0}<button class="btn" onclick={() => page--}>{s.previous}</button>{/if}
-    {#if last}
+    {#if last && game.tutorial}
+      <button class="btn" onclick={() => game.endTutorial(true)}>{s.tutorialTrain}</button>
+      <button class="btn primary" onclick={() => game.endTutorial(false)}>{s.tutorialPlay}</button>
+    {:else if last}
       <button class="btn primary" onclick={() => (game.dialog = 'none')}>{s.gotIt}</button>
     {:else}
       <button class="btn primary" onclick={() => page++}>{s.next2}</button>

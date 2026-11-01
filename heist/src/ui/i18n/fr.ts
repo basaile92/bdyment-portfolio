@@ -75,8 +75,10 @@ export const fr: Strings = {
   welcomeTitle: 'Bienvenue, cambrioleur',
   welcomeText:
     'Cinq joyaux sont cachés dans la salle. Allume tes lampes torches depuis les bords : la lumière rebondit sur les joyaux et ressort teintée de leurs couleurs. Déduis leurs contours, dessine-les, puis lance le casse.',
-  welcomeKnow: 'Je connais',
-  welcomeLearn: 'Apprendre',
+  welcomeKnow: 'Jouer',
+  welcomeLearn: 'Tutoriel',
+  tutorialTrain: 'S’entraîner',
+  tutorialPlay: 'Jouer',
   languageLabel: 'Langue',
 
   clearTitle: 'Effacer tout le plan ?',

@@ -74,9 +74,12 @@
 <style>
   .app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; }
   main { flex: 1; min-height: 0; width: 100%; max-width: var(--max); margin: 0 auto; display: flex; flex-direction: column; padding: 10px; }
-  .side { flex: none; }
+  /* The thief's column always stacks above the room: he never passes under the grid, whatever the screen. */
+  .side { flex: none; position: relative; z-index: 5; }
   .room { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 0; }
   .toast-slot { display: contents; }
+  /* Tablets and big portrait windows show the thief and his bubble, so no floating message there. */
+  @media (min-width: 600px) { .toast-slot { display: none !important; } }
   .wide-only { display: none; }
   /* The whole screen flashes red when the alarm goes up. */
   .red-flash { position: fixed; inset: 0; z-index: 9; pointer-events: none; background: rgba(255, 30, 70, 0.45); opacity: 0; animation: red-flash 1.1s; }

@@ -326,9 +326,19 @@ export class GameController {
   // ---------- settings & tips ----------
 
   /** Leaving the welcome card also confirms the language shown, so it is not asked again. */
-  async closeWelcome(learn: boolean): Promise<void> {
+  /** True while the help is shown as the first-launch tutorial (it then ends on "train" or "play"). */
+  tutorial = $state(false);
+
+  async closeWelcome(tutorial: boolean): Promise<void> {
     if (this.settings.language === undefined) await this.updateSettings({ language: this.language });
-    if (learn) this.start({ kind: 'training', level: 1 });
+    this.tutorial = tutorial;
+    this.dialog = tutorial ? 'help' : 'none';
+  }
+
+  /** End of the first-launch tutorial: a training room, or straight to the heist already set up. */
+  endTutorial(train: boolean): void {
+    this.tutorial = false;
+    if (train) this.start({ kind: 'training', level: 1 });
     else this.dialog = 'none';
   }
 
