@@ -75,18 +75,19 @@ export class CloudFrontStack extends cdk.Stack {
             }
         );
 
-        // Sub-folder sites (bdyment.com/heist) need their index.html: S3 has no directory index,
+        // Sub-folder sites (bdyment.com/prismjack) need their index.html: S3 has no directory index,
         // and the 404 fallback below would otherwise serve the terminal instead of the game.
+        // The game's former address, /heist, redirects to /prismjack/.
         const folderIndexFunction = new aws_cloudfront.Function(this, "BdymentPortfolioFolderIndexFunction", {
             runtime: aws_cloudfront.FunctionRuntime.JS_2_0,
             code: aws_cloudfront.FunctionCode.fromInline(`
 function handler(event) {
     var request = event.request;
     var uri = request.uri;
-    if (uri === '/heist') {
-        return { statusCode: 301, statusDescription: 'Moved Permanently', headers: { location: { value: '/heist/' } } };
+    if (uri === '/heist' || uri.startsWith('/heist/') || uri === '/prismjack') {
+        return { statusCode: 301, statusDescription: 'Moved Permanently', headers: { location: { value: '/prismjack/' } } };
     }
-    if (uri.startsWith('/heist/') && uri.endsWith('/')) {
+    if (uri.startsWith('/prismjack/') && uri.endsWith('/')) {
         request.uri = uri + 'index.html';
     }
     return request;

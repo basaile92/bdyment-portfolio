@@ -18,7 +18,7 @@ jobs:
       front: ${{ steps.filter.outputs.front }}
       back: ${{ steps.filter.outputs.back }}
       infra: ${{ steps.filter.outputs.infra }}
-      heist: ${{ steps.filter.outputs.heist }}
+      prismjack: ${{ steps.filter.outputs.prismjack }}
       workflow: ${{ steps.filter.outputs.workflow }}
     steps:
       - uses: actions/checkout@v4
@@ -32,8 +32,8 @@ jobs:
               - 'back/**'
             infra:
               - 'infra/**'
-            heist:
-              - 'heist/**'
+            prismjack:
+              - 'prismjack/**'
             workflow:
               - '.github/workflows/**'
 
@@ -62,21 +62,21 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  heist:
-    name: Heist game (lint + test + build)
+  prismjack:
+    name: Prismjack game (lint + test + build)
     needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.heist == 'true' || needs.changes.outputs.workflow == 'true'
+    if: github.event_name != 'pull_request' || needs.changes.outputs.prismjack == 'true' || needs.changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: heist
+        working-directory: prismjack
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
           cache: npm
-          cache-dependency-path: heist/package-lock.json
+          cache-dependency-path: prismjack/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm run check
@@ -84,8 +84,8 @@ jobs:
       - run: npm run build:portfolio
       - uses: actions/upload-artifact@v4
         with:
-          name: heist-dist
-          path: heist/dist-portfolio
+          name: prismjack-dist
+          path: prismjack/dist-portfolio
           retention-days: 7
           if-no-files-found: error
 
@@ -140,7 +140,7 @@ jobs:
   deploy:
     name: Deploy (CDK)
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    needs: [front, back, heist, infra-test]
+    needs: [front, back, prismjack, infra-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -154,11 +154,11 @@ jobs:
         with:
           name: front-build
           path: front/build
-      - name: Download heist build
+      - name: Download prismjack build
         uses: actions/download-artifact@v4
         with:
-          name: heist-dist
-          path: heist/dist-portfolio
+          name: prismjack-dist
+          path: prismjack/dist-portfolio
       - name: Download back dist
         uses: actions/download-artifact@v4
         with:

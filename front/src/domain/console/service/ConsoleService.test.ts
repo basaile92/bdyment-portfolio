@@ -1,7 +1,7 @@
-import { ConsoleService, HEIST_PATH } from './ConsoleService';
+import { ConsoleService, PRISMJACK_PATH } from './ConsoleService';
 import { AdviseService } from './AdviseService';
 
-describe('heist command', () => {
+describe('prismjack command', () => {
   const unused = {} as any;
   const navigateTo = jest.fn();
   const service = new ConsoleService(
@@ -10,12 +10,12 @@ describe('heist command', () => {
   );
 
   it('sends the visitor to the game', async () => {
-    const response = await service.submitCommand('heist');
-    expect(navigateTo).toHaveBeenCalledWith(HEIST_PATH);
-    expect(response).toContain('Le Casse');
+    const response = await service.submitCommand('prismjack');
+    expect(navigateTo).toHaveBeenCalledWith(PRISMJACK_PATH);
+    expect(response).toContain('Prismjack');
   });
 
   it('is suggested by tab completion', () => {
-    expect(new AdviseService().adviseCommandsWhoStartWith('he')).toEqual(['heist', 'help']);
+    expect(new AdviseService().adviseCommandsWhoStartWith('pr')).toEqual(['prismjack', 'projects']);
   });
 });

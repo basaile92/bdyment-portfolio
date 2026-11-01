@@ -143,11 +143,11 @@ export const commands = [
     ],
   },
   {
-    command: 'heist',
+    command: 'prismjack',
     usages: [
       {
         parameter: '',
-        description: 'break into the museum: play "Le Casse", a laser deduction game made by Basile Dyment.',
+        description: 'break into the museum: play Prismjack, a deduction game made by Basile Dyment.',
       },
     ],
   },

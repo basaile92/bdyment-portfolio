@@ -1,0 +1,40 @@
+import { NO_PROGRESS, type Progress, type ProgressStore, type Settings } from '../ports/ProgressStore';
+import { previousDay, type PrismjackMode } from './modes';
+
+function afterWin(p: Progress, mode: PrismjackMode): Progress {
+  if (mode.kind === 'training') return { ...p, trainingDone: Math.max(p.trainingDone, mode.level) };
+  if (mode.kind !== 'daily' || p.lastDailyWon === mode.day) return p;
+  const streak = p.lastDailyWon === previousDay(mode.day) ? p.dailyStreak + 1 : 1;
+  return { ...p, dailyStreak: streak, lastDailyWon: mode.day };
+}
+
+const played = (p: Progress, mode: PrismjackMode): Progress => (mode.kind === 'daily' ? { ...p, lastDailyPlayed: mode.day } : p);
+
+/** A won prismjack; `alarms` = alarm level reached (0 = perfect). */
+export async function recordPrismjack(store: ProgressStore, alarms: number, mode: PrismjackMode): Promise<Progress> {
+  const p = await store.load();
+  const counted: Progress = { ...p, prismjacksWon: p.prismjacksWon + 1, perfectPrismjacks: p.perfectPrismjacks + (alarms === 0 ? 1 : 0) };
+  const next = played(afterWin(counted, mode), mode);
+  await store.save(next);
+  return next;
+}
+
+/** The guard caught the thief: a daily prismjack still counts as played today. */
+export async function recordCaught(store: ProgressStore, mode: PrismjackMode): Promise<Progress> {
+  const next = played(await store.load(), mode);
+  await store.save(next);
+  return next;
+}
+
+export async function saveSettings(store: ProgressStore, settings: Settings): Promise<Progress> {
+  const next = { ...(await store.load()), settings };
+  await store.save(next);
+  return next;
+}
+
+/** Back to a first launch: progress and settings (language, symbols, sound) are all forgotten. */
+export async function resetProgress(store: ProgressStore): Promise<Progress> {
+  const next: Progress = NO_PROGRESS;
+  await store.save(next);
+  return next;
+}
