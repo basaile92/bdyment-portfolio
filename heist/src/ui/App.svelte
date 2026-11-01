@@ -9,6 +9,7 @@
   import Modal from './components/Modal.svelte';
   import SettingsDialog from './components/SettingsDialog.svelte';
   import ThiefScene from './components/ThiefScene.svelte';
+  import PhoneDiver from './components/PhoneDiver.svelte';
   import SpeechToast from './components/SpeechToast.svelte';
   import SymbolsSwitch from './components/SymbolsSwitch.svelte';
   import Toolbar from './components/Toolbar.svelte';
@@ -54,6 +55,7 @@
 
 {#key game.alarmTick}{#if game.alarmTick > 0}<div class="red-flash" aria-hidden="true"></div>{/if}{/key}
 
+<PhoneDiver {game} />
 <HelpSheet {game} />
 <MenuDialog {game} />
 <SettingsDialog {game} />

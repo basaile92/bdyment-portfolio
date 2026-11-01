@@ -28,6 +28,11 @@ export type Dialog = 'none' | 'welcome' | 'help' | 'menu' | 'settings' | 'confir
 /** GO animation: drop out of the window, climb back, keep the face a moment. */
 const DIVE_MS = 650;
 const RISE_MS = 700;
+/** Phones, where the thief is hidden: come into view, pause, then a slower drop. */
+const PHONE_PORTRAIT = '(max-width: 599px) and (max-aspect-ratio: 1/1)';
+const ENTER_MS = 450;
+const PAUSE_MS = 500;
+const PHONE_DIVE_MS = 950;
 const MOOD_MS = 2200;
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -54,7 +59,7 @@ export class GameController {
   dialog = $state<Dialog>('none');
   alarmTick = $state(0);
   /** GO: the thief drops below the window ('down'), then climbs back ('up') or, loot in hand, right out of the top ('escape'). */
-  dive = $state<'none' | 'down' | 'up' | 'escape'>('none');
+  dive = $state<'none' | 'enter' | 'down' | 'up' | 'escape'>('none');
   /** The thief's face after a GO. */
   mood = $state<'calm' | 'sad' | 'happy'>('calm');
   /** Number of jewels revealed by the victory sequence. */
@@ -264,9 +269,15 @@ export class GameController {
       this.speech = { kind: 'empty-plan' };
       return;
     }
+    // On phones the thief waits out of sight: he first comes down into view and pauses.
+    const hidden = typeof matchMedia === 'function' && matchMedia(PHONE_PORTRAIT).matches;
+    if (hidden) {
+      this.dive = 'enter';
+      await wait(ENTER_MS + PAUSE_MS);
+    }
     // The thief drops through the roof; the verdict falls once he is out of sight.
     this.dive = 'down';
-    await wait(DIVE_MS);
+    await wait(hidden ? PHONE_DIVE_MS : DIVE_MS);
     this.heist = outcome.state;
     this.mood = outcome.kind === 'success' ? 'happy' : 'sad';
     this.dive = outcome.kind === 'success' ? 'escape' : 'up';
