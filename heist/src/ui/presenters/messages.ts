@@ -1,6 +1,6 @@
 import type { Shot } from '../../application';
 import type { Strings } from '../i18n/strings';
-import { laserDescription, laserHex } from './palette';
+import { laserDescription, laserFill } from './palette';
 
 /** What the thief says in his bubble. Pure data: the view decides how to style it. */
 export type Speech =
@@ -53,7 +53,7 @@ export function speak(speech: Speech, s: Strings): SpeechPart[] {
 }
 
 function describeShot(number: number, shot: Shot, s: Strings): SpeechPart[] {
-  const color = shot.color === 0 ? {} : { swatch: laserHex(shot.color) };
+  const color = shot.color === 0 ? {} : { swatch: laserFill(shot.color) };
   return [
     { text: s.speech.shot(number, shot.exit === shot.entry) },
     { text: laserDescription(shot.color, s), strong: true, ...color },

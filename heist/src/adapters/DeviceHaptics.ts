@@ -10,6 +10,11 @@ export class DeviceHaptics implements Haptics {
     else this.vibrate(10);
   }
 
+  tick(): void {
+    if (this.native) void CapHaptics.selectionChanged();
+    else this.vibrate(5);
+  }
+
   success(): void {
     if (this.native) void CapHaptics.notification({ type: NotificationType.Success });
     else this.vibrate([20, 40, 20]);

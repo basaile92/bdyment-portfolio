@@ -45,7 +45,8 @@
 
 <style>
   /* Above the thief's column, so the rope always comes out from under the bar. */
-  header { background: var(--bar); position: relative; z-index: 10; }
+  /* On iPhone the bar extends under the status bar / notch, its content stays below it. */
+  header { background: var(--bar); position: relative; z-index: 10; padding-top: env(safe-area-inset-top); }
   .inner { display: flex; align-items: center; gap: 6px; padding: 8px 12px; }
   .title { position: relative; }
   h1 { margin: 0; font-family: var(--title-font); font-weight: 400; font-size: 20px; line-height: 1; color: var(--gold); white-space: nowrap; }

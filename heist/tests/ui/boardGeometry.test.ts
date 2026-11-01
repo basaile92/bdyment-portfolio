@@ -42,6 +42,6 @@ describe('keyboard cursor', () => {
 });
 
 describe('colour names', () => {
-  it('spells out mixes', () => expect(laserDescription(maskOf('red', 'blue'), fr)).toBe('violet (rouge + bleu)'));
+  it('lists mixed colours without blending them', () => expect(laserDescription(maskOf('red', 'blue'), fr)).toBe('rouge + bleu'));
   it('keeps simple colours short', () => expect(laserDescription(maskOf('yellow'), fr)).toBe('jaune'));
 });

@@ -137,16 +137,16 @@ export const en: Strings = {
   helpTitle: 'Quick guide',
   helpGoal: 'Goal',
   helpGoalText:
-    'Five **jewels** are hidden in the jeweller’s, under an opaque glass roof. The floor is alarmed: to steal them you must drop right on top of them. Light up the room with the **torches** on the walls, work out each jewel’s **shape**, **position** and **colour**, draw them on the plan, then start the heist with **GO**. Each wrong plan raises the alarm: at 3, the guard arrives.',
+    'Five **jewels** are hidden in the jeweller’s, under an opaque glass roof. The floor is alarmed: to steal them you must drop right on top of them. Light up the room with the **torches** on the walls, work out each jewel’s **shape**, **position** and **colour**, draw them on the plan, then start the heist with **GO**. The **loot** shows the shapes to find; they may be rotated or flipped, and can touch the walls of the room. Each wrong plan raises the alarm: at 3, the guard arrives.',
   helpTest: 'Testing',
   helpTestText:
-    'Tap a **torch**: its light crosses the room. The exit sensor and the starting one light up in its colour; tap one to see its twin. Slashed torch: no jewel hit. ↩ badge: back to the start.',
+    'Tap a **torch**: its light goes **straight**, at right angles to the wall, and crosses the room. The exit sensor and the starting one light up in its colour; tap one to see its twin. Slashed torch: no jewel hit. ↩ badge: back to the start.',
   helpWalls: 'Walls and facets',
   helpWall: 'A **wall** sends the light back where it came from.',
   helpFacet: 'A **facet** turns it at a right angle.',
   helpColors: 'Colours',
   helpColorsText:
-    'Each jewel it hits tints the light; hitting the same one twice changes nothing.',
+    'The torch shows the colour of each jewel hit, side by side (in two, three or four parts); hitting the same one twice changes nothing.',
   helpDraw: 'Drawing',
   helpDrawText:
     '**Draw**: near a cell edge, a wall; towards the centre, a facet. Slide before releasing to adjust. **Empty**: tap or slide over cells without jewels. Recognised jewels get ticked in the loot.',

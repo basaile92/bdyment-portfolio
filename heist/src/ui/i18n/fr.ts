@@ -137,16 +137,16 @@ export const fr: Strings = {
   helpTitle: 'Aide-mémoire',
   helpGoal: 'Objectif',
   helpGoalText:
-    'Cinq **joyaux** sont cachés dans la bijouterie, sous une verrière opaque. Le sol est piégé : pour les voler, tu dois descendre pile dessus. Éclaire la salle avec les **lampes torches** des bords, déduis la **forme**, la **position** et la **couleur** de chaque joyau, dessine-les sur le plan, puis lance le casse avec **GO**. Chaque plan faux fait monter l’alarme : à 3, le gardien arrive.',
+    'Cinq **joyaux** sont cachés dans la bijouterie, sous une verrière opaque. Le sol est piégé : pour les voler, tu dois descendre pile dessus. Éclaire la salle avec les **lampes torches** des bords, déduis la **forme**, la **position** et la **couleur** de chaque joyau, dessine-les sur le plan, puis lance le casse avec **GO**. Le **butin** montre les formes à trouver ; elles peuvent être tournées ou retournées, et peuvent toucher les murs de la salle. Chaque plan faux fait monter l’alarme : à 3, le gardien arrive.',
   helpTest: 'Tester',
   helpTestText:
-    'Touche une **lampe torche** : sa lumière traverse la salle. Le capteur de sortie et celui de départ s’allument de sa couleur ; touche-en un pour voir son jumeau. Lampe barrée : aucun joyau touché. Pastille ↩ : retour au départ.',
+    'Touche une **lampe torche** : sa lumière part **tout droit**, perpendiculaire au bord, et traverse la salle. Le capteur de sortie et celui de départ s’allument de sa couleur ; touche-en un pour voir son jumeau. Lampe barrée : aucun joyau touché. Pastille ↩ : retour au départ.',
   helpWalls: 'Murs et facettes',
   helpWall: 'Un **mur** renvoie la lumière d’où elle vient.',
   helpFacet: 'Une **facette** le tourne à angle droit.',
   helpColors: 'Couleurs',
   helpColorsText:
-    'Chaque joyau touché teinte la lumière ; toucher deux fois le même ne change rien.',
+    'La lampe montre la couleur de chaque joyau touché, côte à côte (en deux, trois ou quatre parts) ; toucher deux fois le même ne change rien.',
   helpDraw: 'Dessiner',
   helpDrawText:
     '**Tracer** : près d’un bord de case, un mur ; vers le centre, une facette. Glisse avant de lâcher pour ajuster. **Vide** : touche ou glisse sur les cases sans joyau. Les joyaux reconnus se cochent dans le butin.',

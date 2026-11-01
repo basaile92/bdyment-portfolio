@@ -12,7 +12,7 @@ describe('languages', () => {
     expect(en.laserNames).toHaveLength(16);
   });
 
-  it('describes a mix in English', () => expect(laserDescription(maskOf('red', 'blue'), en)).toBe('purple (red + blue)'));
+  it('describes a mix in English', () => expect(laserDescription(maskOf('red', 'blue'), en)).toBe('red + blue'));
 
   it('handles plurals per language', () => {
     expect(en.tests(1)).toContain('test');

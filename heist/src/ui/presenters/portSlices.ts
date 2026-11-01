@@ -12,7 +12,7 @@ export interface Slice {
 }
 
 /** Slice centre angles (degrees, 0 = right, clockwise) for 2, 3 and 4 colours, matching the glyph layout. */
-const CENTRES: Record<number, readonly number[]> = {
+export const SLICE_CENTRES: Record<number, readonly number[]> = {
   2: [180, 0],
   3: [-90, 150, 30],
   4: [-135, -45, 135, 45],
@@ -31,7 +31,7 @@ const fmt = (p: Point) => `${p.x.toFixed(4)} ${p.y.toFixed(4)}`;
  */
 export function colorSlices(mask: ColorMask, c: Point, r: number): Slice[] {
   const colors = colorsIn(mask);
-  const centres = CENTRES[colors.length];
+  const centres = SLICE_CENTRES[colors.length];
   if (!centres) return [];
   const half = 180 / colors.length;
   return colors.map((color, i) => {

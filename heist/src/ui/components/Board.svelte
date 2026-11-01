@@ -19,6 +19,7 @@
   type Preview = { kind: 'draw'; target: DrawTarget } | { kind: 'empty'; cell: number } | null;
 
   let svg = $state<SVGSVGElement>();
+  let areaEl = $state<HTMLDivElement>();
   let areaWidth = $state(0);
   let areaHeight = $state(0);
   let hover = $state<Preview>(null);
@@ -56,7 +57,9 @@
   const beams = $derived.by(() => {
     const shot = game.flashed;
     if (!shot) return null;
-    const color = shot.color ? laserHex(shot.color) : '#e9eeff';
+    /** Never blended: one stripe per jewel colour, side by side. */
+    const parts = colorsIn(shot.color);
+    const stripes = parts.length > 0 ? parts.map((c) => JEWEL_HEX[c]) : ['#e9eeff'];
     const a = portCenter(board, shot.entry);
     const b = portMouth(board, shot.entry);
     const c = portMouth(board, shot.exit);
@@ -69,12 +72,65 @@
     };
     const inEnd = inward(a, b);
     const outStart = inward(d, c);
+    const len = Math.hypot(outStart.x - d.x, outStart.y - d.y) || 1;
+    /** Unit vector across the outgoing beam, to lay the colour stripes side by side. */
+    const across = { x: -(outStart.y - d.y) / len, y: (outStart.x - d.x) / len };
     return {
-      shot, color, a, b, c, d, inEnd, outStart,
+      shot, stripes, a, b, c, d, inEnd, outStart, across,
     };
   });
 
+  /** The lane a hovered (or finger-aimed) torch lights, straight across the room. */
+  const lane = $derived.by(() => {
+    if (hoveredPort === null) return null;
+    /** It starts from the torch itself (drawn under it) and runs to the far side of the room. */
+    const from = portCenter(board, hoveredPort);
+    const mouth = portMouth(board, hoveredPort);
+    const w = 0.614;
+    const vertical = mouth.x === from.x;
+    const to = vertical
+      ? { x: from.x, y: mouth.y > from.y ? BAND + board.height : BAND }
+      : { x: mouth.x > from.x ? BAND + board.width : BAND, y: from.y };
+    const rect = vertical
+      ? { x: from.x - w / 2, y: Math.min(from.y, to.y), w, h: Math.abs(to.y - from.y) }
+      : { x: Math.min(from.x, to.x), y: from.y - w / 2, w: Math.abs(to.x - from.x), h: w };
+    return { ...rect, from, to };
+  });
+
   // ---------- pointer ----------
+
+  /**
+   * Touch drawing: the finger hides the cell, so a loupe above it shows the spot magnified,
+   * and a light haptic tick marks each change of target.
+   */
+  type Loupe = { left: number; top: number; at: Point };
+  let loupe = $state<Loupe | null>(null);
+  let felt = '';
+  const LOUPE_PX = 130;
+  const LOUPE_ZOOM = 2;
+  /** How far above the finger the loupe floats, so the finger never covers it. */
+  const LOUPE_LIFT = 46;
+
+  function showLoupe(e: PointerEvent) {
+    const box = areaEl?.getBoundingClientRect();
+    if (!box || e.pointerType === 'mouse') return;
+    const left = Math.min(Math.max(e.clientX - box.left - LOUPE_PX / 2, -box.left + 4), window.innerWidth - box.left - LOUPE_PX - 4);
+    const top = Math.max(e.clientY - box.top - LOUPE_PX - LOUPE_LIFT, -box.top + 4);
+    loupe = { left, top, at: pointOf(e) };
+  }
+
+  /** One tick per new target (wall or facet, or cell when marking empty), never twice for the same. */
+  function feel(target: string) {
+    if (target === felt) return;
+    felt = target;
+    game.feel();
+  }
+
+  const targetId = (t: DrawTarget) => `${t.key}:${t.surface.orientation}`;
+
+  /** Touch: the finger slides over the torches to aim (like a hover), the light fires on release. */
+  let aiming = false;
+  let skipClick = false;
 
   function pointOf(e: PointerEvent | MouseEvent): Point {
     const m = svg?.getScreenCTM();
@@ -88,23 +144,61 @@
 
   function onPointerDown(e: PointerEvent) {
     const hit = hitOf(e);
+    skipClick = false;
+    if (e.pointerType !== 'mouse' && hit?.kind === 'port') {
+      svg?.setPointerCapture(e.pointerId);
+      aiming = true;
+      hoveredPort = hit.port;
+      return;
+    }
     if (game.over || hit?.kind !== 'cell') return;
     svg?.setPointerCapture(e.pointerId);
+    felt = '';
     if (game.tool === 'empty') {
       painting = !game.heist.emptyCells.has(cellOf(hit));
       game.markEmpty(cellOf(hit), painting);
     } else {
       pressing = traceTarget(hit, game.color);
     }
+    touchFeedback(e, hit);
+  }
+
+  function touchFeedback(e: PointerEvent, hit: CellHit) {
+    if (e.pointerType === 'mouse') return;
+    showLoupe(e);
+    feel(pressing ? targetId(pressing) : `cell:${cellOf(hit)}`);
   }
 
   function onPointerMove(e: PointerEvent) {
     const hit = hitOf(e);
-    if (painting !== null && hit?.kind === 'cell') game.markEmpty(cellOf(hit), painting);
-    if (pressing && hit?.kind === 'cell') pressing = traceTarget(hit, game.color);
+    if (aiming) aimAt(hit, pointOf(e));
+    else track(e, hit);
+  }
+
+  /** How far from a torch's centre the finger may stray (view units) before it lets go of it. */
+  const AIM_REACH = BAND / 2 + 0.08;
+
+  /** Aiming holds a torch only while the finger stays on it: leave it and nothing is aimed (or fired). */
+  function aimAt(hit: Hit | null, at: Point) {
+    if (hit?.kind !== 'port') {
+      hoveredPort = null;
+      return;
+    }
+    const c = portCenter(board, hit.port);
+    hoveredPort = Math.abs(at.x - c.x) <= AIM_REACH && Math.abs(at.y - c.y) <= AIM_REACH ? hit.port : null;
+  }
+
+  function track(e: PointerEvent, hit: Hit | null) {
+    if (hit?.kind === 'cell') trackDrawing(e, hit);
     if (e.pointerType !== 'mouse') return;
     hoveredPort = hit?.kind === 'port' ? hit.port : null;
     hover = hoverFor(hit);
+  }
+
+  function trackDrawing(e: PointerEvent, hit: CellHit) {
+    if (painting !== null) game.markEmpty(cellOf(hit), painting);
+    if (pressing) pressing = traceTarget(hit, game.color);
+    if (pressing || painting !== null) touchFeedback(e, hit);
   }
 
   function hoverFor(hit: Hit | null): Preview {
@@ -113,22 +207,38 @@
   }
 
   function onPointerUp() {
+    if (aiming) {
+      if (hoveredPort !== null) game.fire(hoveredPort);
+      aiming = false;
+      skipClick = true;
+      hoveredPort = null;
+      return;
+    }
     if (pressing) game.draw(pressing.key, pressing.surface);
     pressing = null;
     painting = null;
+    loupe = null;
   }
 
   function onPointerCancel() {
+    if (aiming) hoveredPort = null;
+    aiming = false;
     pressing = null;
     painting = null;
+    loupe = null;
   }
 
   function onLeave() {
+    if (aiming) return;
     hover = null;
     hoveredPort = null;
   }
 
   function onClick(e: MouseEvent) {
+    if (skipClick) {
+      skipClick = false;
+      return;
+    }
     const hit = hitOf(e);
     if (hit?.kind === 'port') game.fire(hit.port);
   }
@@ -181,23 +291,35 @@
     const y = BAND + Math.floor(i / board.width) + 0.5;
     return `M${x - 0.16} ${y - 0.16}l.32 .32M${x + 0.16} ${y - 0.16}l-.32 .32`;
   };
-  /** Positions of 1 to 4 glyphs inside a lit sensor. */
-  const glyphSpots = (n: number, c: Point): Point[] => {
-    const d = 0.075;
-    if (n === 1) return [c];
-    if (n === 2) return [{ x: c.x - d, y: c.y }, { x: c.x + d, y: c.y }];
-    if (n === 3) return [{ x: c.x, y: c.y - d }, { x: c.x - d, y: c.y + d * 0.8 }, { x: c.x + d, y: c.y + d * 0.8 }];
-    return [{ x: c.x - d, y: c.y - d }, { x: c.x + d, y: c.y - d }, { x: c.x - d, y: c.y + d }, { x: c.x + d, y: c.y + d }];
-  };
   /** Radius of a torch's lens, where the result colour shows. */
   const LENS = 0.205;
   const isLinked = (shot: Shot | undefined) => shot !== undefined && game.selected === shot;
-  /** No hover on touch screens: the selected pair shows its colour split instead. */
-  const touchOnly = typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
   const activePreview = $derived<Preview>(pressing ? { kind: 'draw', target: pressing } : hover);
 </script>
 
-<div class="area" bind:clientWidth={areaWidth} bind:clientHeight={areaHeight}>
+{#snippet drawing()}
+      {#each fills as region, r (r)}
+        <g fill={JEWEL_HEX[region.color]} stroke={JEWEL_HEX[region.color]} stroke-width=".02" opacity=".38">
+          {#each region.quarters as q (`${q.x},${q.y},${q.q}`)}<polygon points={translate(QUARTER_POLYGON[q.q], BAND + q.x, BAND + q.y)} />{/each}
+        </g>
+      {/each}
+
+      {#if !game.over}
+        {#each [...game.heist.emptyCells] as i (i)}<path class="cross" d={crossPath(i)} />{/each}
+      {/if}
+
+      {#each segments as s (s.key)}<line {...lineOf(s.seg)} class="surface" stroke={s.color} />{/each}
+
+      {#if activePreview?.kind === 'draw'}
+        {@const removing = isRemoval(activePreview.target)}
+        {@const seg = lineOf(surfaceSegment(activePreview.target.key, activePreview.target.surface))}
+        <line {...seg} class={removing ? 'ghost-remove' : 'ghost'} class:pressed={pressing !== null} stroke={removing ? undefined : JEWEL_HEX[activePreview.target.surface.color]} />
+      {:else if activePreview?.kind === 'empty'}
+        <path class="cross ghost-cross" class:faint={game.heist.emptyCells.has(activePreview.cell)} d={crossPath(activePreview.cell)} />
+      {/if}
+{/snippet}
+
+<div class="area" bind:this={areaEl} bind:clientWidth={areaWidth} bind:clientHeight={areaHeight}>
   <div class="frame" style="width: {unit * view.width + 2 * (FRAME_PAD + FRAME_EDGE)}px; height: {unit * view.height + 2 * (FRAME_PAD + FRAME_EDGE)}px">
     <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
     <svg
@@ -283,24 +405,18 @@
         {/each}
       {/if}
 
-      {#each fills as region, r (r)}
-        <g fill={JEWEL_HEX[region.color]} stroke={JEWEL_HEX[region.color]} stroke-width=".02" opacity=".38">
-          {#each region.quarters as q (`${q.x},${q.y},${q.q}`)}<polygon points={translate(QUARTER_POLYGON[q.q], BAND + q.x, BAND + q.y)} />{/each}
+      {@render drawing()}
+
+      {#if lane}
+        <!-- Soft light lane: brightest at the torch, fading out across the room. -->
+        <g class="lane">
+          <defs>
+            <linearGradient id="lane-fill" gradientUnits="userSpaceOnUse" x1={lane.from.x} y1={lane.from.y} x2={lane.to.x} y2={lane.to.y}>
+              <stop offset="0" stop-color="#fffbe8" stop-opacity=".28" /><stop offset=".6" stop-color="#fffbe8" stop-opacity=".1" /><stop offset="1" stop-color="#fffbe8" stop-opacity=".03" />
+            </linearGradient>
+          </defs>
+          <rect x={lane.x} y={lane.y} width={lane.w} height={lane.h} fill="url(#lane-fill)" />
         </g>
-      {/each}
-
-      {#if !game.over}
-        {#each [...game.heist.emptyCells] as i (i)}<path class="cross" d={crossPath(i)} />{/each}
-      {/if}
-
-      {#each segments as s (s.key)}<line {...lineOf(s.seg)} class="surface" stroke={s.color} />{/each}
-
-      {#if activePreview?.kind === 'draw'}
-        {@const removing = isRemoval(activePreview.target)}
-        {@const seg = lineOf(surfaceSegment(activePreview.target.key, activePreview.target.surface))}
-        <line {...seg} class={removing ? 'ghost-remove' : 'ghost'} class:pressed={pressing !== null} stroke={removing ? undefined : JEWEL_HEX[activePreview.target.surface.color]} />
-      {:else if activePreview?.kind === 'empty'}
-        <path class="cross ghost-cross" class:faint={game.heist.emptyCells.has(activePreview.cell)} d={crossPath(activePreview.cell)} />
       {/if}
 
       {#if beams}
@@ -309,27 +425,42 @@
             <linearGradient id="beam-in" gradientUnits="userSpaceOnUse" x1={beams.a.x} y1={beams.a.y} x2={beams.inEnd.x} y2={beams.inEnd.y}>
               <stop offset="0" stop-color="#fffbe8" stop-opacity=".95" /><stop offset="1" stop-color="#fffbe8" stop-opacity="0" />
             </linearGradient>
-            <linearGradient id="beam-out" gradientUnits="userSpaceOnUse" x1={beams.d.x} y1={beams.d.y} x2={beams.outStart.x} y2={beams.outStart.y}>
-              <stop offset="0" stop-color={beams.color} stop-opacity=".95" /><stop offset="1" stop-color={beams.color} stop-opacity="0" />
-            </linearGradient>
+            {#each beams.stripes as color, i (i)}
+              <linearGradient id="beam-out-{i}" gradientUnits="userSpaceOnUse" x1={beams.d.x} y1={beams.d.y} x2={beams.outStart.x} y2={beams.outStart.y}>
+                <stop offset="0" stop-color={color} stop-opacity=".95" /><stop offset="1" stop-color={color} stop-opacity="0" />
+              </linearGradient>
+            {/each}
           </defs>
           <!-- The torch shines through the glass wall, its beam vanishes under the frosted roof… -->
           <line x1={beams.a.x} y1={beams.a.y} x2={beams.inEnd.x} y2={beams.inEnd.y} stroke="url(#beam-in)" class="beam in" class:wide={twins.has(beams.shot.entry)} />
           <circle cx={beams.b.x} cy={beams.b.y} r=".4" class="splash in" fill="url(#torchlight)" />
           <!-- …and the light comes out elsewhere, tinted by the jewels it touched. -->
-          <circle cx={beams.c.x} cy={beams.c.y} r=".4" class="splash out" fill={beams.color} />
-          <line x1={beams.d.x} y1={beams.d.y} x2={beams.outStart.x} y2={beams.outStart.y} stroke="url(#beam-out)" class="beam out" class:wide={twins.has(beams.shot.exit)} />
+          {@const splash = colorSlices(beams.shot.color, beams.c, 0.4)}
+          <g class="splash out">
+            {#if splash.length > 0}
+              {#each splash as s (s.color)}<path d={s.path} fill={JEWEL_HEX[s.color]} />{/each}
+            {:else}
+              <circle cx={beams.c.x} cy={beams.c.y} r=".4" fill={beams.stripes[0]} />
+            {/if}
+          </g>
+          <g class="beam out" class:wide={twins.has(beams.shot.exit)}
+            style="--n: {beams.stripes.length}; --ax: {beams.across.x}; --ay: {beams.across.y}">
+            {#each beams.stripes, i}
+              <line x1={beams.d.x} y1={beams.d.y} x2={beams.outStart.x} y2={beams.outStart.y} stroke="url(#beam-out-{i})"
+                class="stripe" style="--o: {i - (beams.stripes.length - 1) / 2}" />
+            {/each}
+          </g>
         {/key}
       {/if}
 
       {#each ports as { p, c, shot } (p)}
-        <g class="port" class:twin={twins.has(p)} class:flash-in={shot !== undefined && game.flashed === shot && p === shot.entry}
+        <g class="port" class:twin={twins.has(p) || hoveredPort === p} class:flash-in={shot !== undefined && game.flashed === shot && p === shot.entry}
           class:flash={shot !== undefined && game.flashed === shot && p === shot.exit} style="transform-origin: {c.x}px {c.y}px">
           <rect x={c.x - BAND / 2} y={c.y - BAND / 2} width={BAND} height={BAND} class="hit" />
           {#if !shot}
             <Torch x={c.x} y={c.y} />
           {:else}
-            {@const slices = twins.has(p) || (touchOnly && isLinked(shot)) ? colorSlices(shot.color, c, LENS) : []}
+            {@const slices = colorSlices(shot.color, c, LENS)}
             {#if game.flashed === shot}
               <!-- While the laser travels, the emitter still looks idle; the result shows when the light comes out. -->
               <g class="idle-until-out">
@@ -347,11 +478,8 @@
               {/each}
             {:else if shot.color}
               <circle cx={c.x} cy={c.y} r={LENS} fill={laserHex(shot.color)} />
-              {@const parts = colorsIn(shot.color)}
-              {#each glyphSpots(parts.length, c) as spot, i (i)}
-                {@const color = parts[i]}
-                {#if color && game.symbols}<Glyph glyph={GLYPH[color]} x={spot.x} y={spot.y} size={parts.length === 1 ? 0.16 : parts.length === 2 ? 0.11 : 0.09} fill={inkOn(shot.color)} />{/if}
-              {/each}
+              {@const color = colorsIn(shot.color)[0]}
+              {#if color && game.symbols}<Glyph glyph={GLYPH[color]} x={c.x} y={c.y} size={0.16} fill={inkOn(shot.color)} />{/if}
             {:else}
               <circle cx={c.x} cy={c.y} r={LENS} fill="url(#reflector)" />
               <line x1={c.x - 0.11} y1={c.y + 0.11} x2={c.x + 0.11} y2={c.y - 0.11} class="clear-slash" />
@@ -370,11 +498,23 @@
       {#if cursorRect}<rect class="cursor" x={cursorRect.x} y={cursorRect.y} width={cursorRect.w} height={cursorRect.h} />{/if}
     </svg>
   </div>
+  {#if loupe && unit > 0}
+    {@const span = LOUPE_PX / (unit * LOUPE_ZOOM)}
+    <!-- The spot under the finger, magnified. -->
+    <svg class="loupe" style="left: {loupe.left}px; top: {loupe.top}px" width={LOUPE_PX} height={LOUPE_PX}
+      viewBox="{loupe.at.x - span / 2} {loupe.at.y - span / 2} {span} {span}" aria-hidden="true">
+      <!-- Only the plan, drawn plainly: cloning the whole room (frosted-glass filter, animations) is far too slow. -->
+      <rect x={BAND} y={BAND} width={board.width} height={board.height} class="glass" />
+      <g class="cells">{#each cells as c (c.i)}<rect x={BAND + c.x} y={BAND + c.y} width="1" height="1" />{/each}</g>
+      {@render drawing()}
+      <circle cx={loupe.at.x} cy={loupe.at.y} r={span * 0.035} class="finger" />
+    </svg>
+  {/if}
   <p class="sr-only" aria-live="polite">{announce}</p>
 </div>
 
 <style>
-  .area { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+  .area { position: relative; flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
   .frame { flex: none; border-radius: 16px; }
   .room-frame { fill: #1c2160; stroke: var(--edge); }
   svg { display: block; overflow: visible; touch-action: manipulation; cursor: pointer; outline: none; }
@@ -398,6 +538,11 @@
   .ghost-cross.faint { opacity: 0.3; }
   .hit { fill: transparent; }
   .cursor { fill: none; stroke: var(--cyan); stroke-width: 0.06; stroke-dasharray: 0.12 0.06; pointer-events: none; }
+  .loupe {
+    position: absolute; z-index: 20; pointer-events: none; border-radius: 50%; overflow: hidden;
+    background: #1c2160; border: 3px solid #fff; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+  }
+  .finger { fill: none; stroke: #fff; stroke-opacity: 0.8; stroke-width: 0.02; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }
   .port { transition: transform 0.15s; }
   .port.twin { transform: scale(1.18); }
@@ -420,6 +565,17 @@
   /* Straight beam as wide as the torch head; it widens with the torch when the torch is hovered. */
   .beam { pointer-events: none; opacity: 0; stroke-width: 0.52; stroke-linecap: butt; transition: stroke-width 0.15s; }
   .beam.wide { stroke-width: 0.614; }
+  /* Outgoing light: one stripe per colour across the beam's width (the group carries the animation). */
+  .beam.out { --bw: 0.52px; stroke-width: 0; }
+  .beam.out.wide { --bw: 0.614px; }
+  .stripe {
+    stroke-width: calc(var(--bw) / var(--n));
+    transform: translate(calc(var(--ax) * var(--o) * var(--bw) / var(--n)), calc(var(--ay) * var(--o) * var(--bw) / var(--n)));
+    transition: stroke-width 0.15s, transform 0.15s;
+  }
+  /* The lane a torch would light, shown while it is hovered or aimed at with a finger. */
+  .lane { pointer-events: none; animation: lane-in 0.18s ease-out; }
+  @keyframes lane-in { from { opacity: 0; } }
   .beam.in { animation: shine 0.9s ease-out; }
   .beam.out { animation: shine 1s 0.55s ease-out; }
   @keyframes shine { 0% { opacity: 0; } 25%, 60% { opacity: 1; } 100% { opacity: 0; } }

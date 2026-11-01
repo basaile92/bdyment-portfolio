@@ -2,7 +2,7 @@
   import { JEWEL_COLORS, maskOf, SHAPES, type JewelColor } from '../../domain';
   import { PART_POLYGON, translate } from '../presenters/shapes';
   import type { GameController } from '../GameController.svelte';
-  import { GLYPH, JEWEL_HEX, laserHex, laserName } from '../presenters/palette';
+  import { GLYPH, JEWEL_HEX, laserFill } from '../presenters/palette';
   import Glyph from './Glyph.svelte';
   import AlarmLamps from './AlarmLamps.svelte';
   import ToolIcon from './icons/ToolIcon.svelte';
@@ -116,7 +116,7 @@
     <p>{s.helpColorsText}{game.symbols ? s.helpSymbols : ''}</p>
     <div class="mixes">
       {#each MIXES as m (m.join())}
-        <span class="mix">{#each m as c, i (c)}{#if i}+{/if}{@render glyph(c)}{/each} = <i style="background: {laserHex(maskOf(...m))}"></i>{laserName(maskOf(...m), s)}</span>
+        <span class="mix">{#each m as c, i (c)}{#if i}+{/if}{@render glyph(c)}{/each} = <i style="background: {laserFill(maskOf(...m))}"></i></span>
       {/each}
     </div>
   {:else if PANELS[page] === 'draw'}
@@ -185,7 +185,7 @@
   .legend span { display: inline-flex; align-items: center; gap: 4px; }
   .mixes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; font-size: 13px; font-weight: 800; color: #dbe1ff; }
   .mix { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
-  .mix i { width: 14px; height: 14px; border-radius: 50%; flex: none; border: 1.5px solid rgba(255, 255, 255, 0.5); }
+  .mix i { width: 18px; height: 18px; border-radius: 50%; flex: none; border: 1.5px solid rgba(255, 255, 255, 0.5); }
   /* Same height on every page, so the buttons don't jump while browsing. */
   .panel { min-height: 300px; display: flex; flex-direction: column; gap: 10px; }
   .nav { margin-top: 4px; }

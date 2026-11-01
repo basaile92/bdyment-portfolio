@@ -1,5 +1,6 @@
 import { colorsIn, type ColorMask, type JewelColor } from '../../domain';
 import type { Strings } from '../i18n/strings';
+import { SLICE_CENTRES } from './portSlices';
 
 export const JEWEL_HEX: Record<JewelColor, string> = {
   red: '#ff4d6d',
@@ -37,9 +38,26 @@ export function inkOn(mask: ColorMask): string {
   return MIXES[mask]?.[1] ? '#1b1745' : '#ffffff';
 }
 
-/** "purple (red + blue)" for mixes, just the name otherwise. */
+/** Colours are never blended: "red + blue" for several, just the name otherwise. */
 export function laserDescription(mask: ColorMask, s: Strings): string {
   const parts = colorsIn(mask);
-  const name = laserName(mask, s);
-  return parts.length > 1 ? `${name} (${parts.map((c) => s.colors[c]).join(' + ')})` : name;
+  return parts.length > 1 ? parts.map((c) => s.colors[c]).join(' + ') : laserName(mask, s);
+}
+
+/**
+ * CSS background of a light: one flat colour, or the jewel colours side by side
+ * (same split as the torch lenses: left/right for 2, thirds, quarters).
+ */
+export function laserFill(mask: ColorMask): string {
+  const parts = colorsIn(mask);
+  const centres = SLICE_CENTRES[parts.length];
+  if (!centres) return laserHex(mask);
+  const step = 360 / parts.length;
+  /** SVG angles (0 = right) → CSS conic angles (0 = top), sorted clockwise. */
+  const slices = parts
+    .map((c, i) => ({ c, at: (((centres[i] ?? 0) + 90) % 360 + 360) % 360 }))
+    .sort((a, b) => a.at - b.at);
+  const start = (slices[0]?.at ?? 0) - step / 2;
+  const stops = slices.map((s, i) => `${JEWEL_HEX[s.c]} ${i * step}deg ${(i + 1) * step}deg`).join(', ');
+  return `conic-gradient(from ${start}deg, ${stops})`;
 }

@@ -175,6 +175,11 @@ export class GameController {
 
   // ---------- laser tests ----------
 
+  /** Haptic tick while the finger slides from one drawing target to another. */
+  feel(): void {
+    this.deps.haptics.tick();
+  }
+
   fire(port: PortId): void {
     if (this.over) return;
     const known = shotAt(this.heist, port);
