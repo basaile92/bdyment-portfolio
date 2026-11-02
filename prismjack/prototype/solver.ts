@@ -71,8 +71,13 @@ export class Room {
 }
 
 export interface TraceOptions {
-  /** Cells an unplaced jewel could still occupy: stop there (exit UNKNOWN). */
+  /** Cells an unplaced jewel could still occupy (value = colours it could have): stop there (exit UNKNOWN). */
   readonly maybe?: Uint8Array | undefined;
+  /**
+   * Colours this torch is known to show. A maybe-cell whose possible colours are all outside it cannot hold
+   * a jewel the light reaches (the jewel would have tinted it): the light goes through as if it were empty.
+   */
+  readonly allow?: number | undefined;
   /** Prism states; null = unknown (a prism then adds no colour and sets `wild`). */
   readonly states?: Int32Array | null;
   /** Receives the pillars touched. */
@@ -108,7 +113,10 @@ export function trace(room: Room, port: PortId, o: TraceOptions = {}): { exit: n
   };
   for (let step = 0; step < 4000; step++) {
     const nx = x + dx, ny = y + dy;
-    if (o.maybe && isInside(board, nx, ny) && o.maybe[ny * W + nx]) return { exit: UNKNOWN, color, wild };
+    if (o.maybe && isInside(board, nx, ny)) {
+      const m = o.maybe[ny * W + nx]!;
+      if (m && (o.allow === undefined || (m & o.allow) !== 0)) return { exit: UNKNOWN, color, wild };
+    }
     const ei = dx !== 0 ? y * (W + 1) + Math.max(x, nx) : Math.max(y, ny) * W + x;
     const edge = dx !== 0 ? v[ei] : h[ei];
     const pEdge = dx !== 0 ? vp[ei] : hp[ei];
@@ -193,8 +201,6 @@ export function solve(board: BoardSize, pillars: readonly Pillar[], specs: reado
     pillarsOnly.apply(p, false);
     return ok;
   }));
-  const order = lists.map((_, i) => i).sort((a, b) => lists[a]!.length - lists[b]!.length);
-  lists = order.map((i) => lists[i]!);
   if (random) lists = lists.map((l) => [...l].sort(() => random() - 0.5));
   const flat = lists.flat();
   const ids = new Map<Placement, number>();
@@ -208,13 +214,20 @@ export function solve(board: BoardSize, pillars: readonly Pillar[], specs: reado
   const fits = (p: Placement) => placed.every((q) => table[ids.get(q)! * N + ids.get(p)!] === 1);
   const maybe = new Uint8Array(board.width * board.height);
   const res: SolveResult = { count: 0, nodes: 0, aborted: false };
+  // Torches whose result rules out colours: checked first, they prune the most.
+  const checkOrder = [...known].sort((a, b) => bitCount(view[a]!.color) - bitCount(view[b]!.color));
 
-  const consistentSoFar = (depth: number): boolean => {
+  /** Cells some light certainly went through (so no jewel there), found while checking. */
+  const crossed = new Uint8Array(board.width * board.height);
+
+  /** Every known torch still possible, given the jewels placed and where the others could still be. */
+  const consistent = (open: readonly Placement[][]): boolean => {
     maybe.fill(0);
-    for (let k = depth; k < lists.length; k++) for (const q of lists[k]!) if (fits(q)) for (const c of q.cellIdx) maybe[c] = 1;
-    for (const port of known) {
+    crossed.fill(0);
+    for (const list of open) for (const q of list) for (const c of q.cellIdx) maybe[c] |= q.color;
+    for (const port of checkOrder) {
       const o = view[port]!;
-      const r = trace(room, port, { maybe, states: hasPrism ? null : new Int32Array(0) });
+      const r = trace(room, port, { maybe, allow: o.exit === ABSORBED ? undefined : o.color, states: hasPrism ? null : new Int32Array(0), lit: crossed });
       if (r.exit === UNKNOWN) { if (o.exit !== ABSORBED && (r.color & ~o.color) !== 0) return false; continue; }
       if (r.exit !== o.exit) return false;
       if (o.exit !== ABSORBED && !r.wild && r.color !== o.color) return false;
@@ -234,24 +247,46 @@ export function solve(board: BoardSize, pillars: readonly Pillar[], specs: reado
     return true;
   };
 
-  const dfs = (depth: number): boolean => {
+  /**
+   * Depth-first search over the jewels still to place, always branching on the one with the fewest
+   * placements left (they shrink as others are placed), pruning as soon as a torch is contradicted.
+   */
+  const dfs = (open: readonly number[]): boolean => {
     if (++res.nodes > maxNodes) { res.aborted = true; return true; }
-    if (depth === lists.length) {
+    if (open.length === 0) {
       if (!fullCheck()) return false;
       collect?.push([...placed]);
       return ++res.count >= cap;
     }
-    for (const p of lists[depth]!) {
-      if (!fits(p)) continue;
+    let candidates = open.map((i) => lists[i]!.filter(fits));
+    // Propagate: a cell the light certainly crossed holds no jewel; fewer placements may settle more torches.
+    for (let round = 0; ; round++) {
+      if (candidates.some((l) => l.length === 0)) return false;
+      if (!consistent(candidates)) return false;
+      if (round === 6) break;
+      const before = candidates.reduce((n, l) => n + l.length, 0);
+      candidates = candidates.map((l) => l.filter((q) => q.cellIdx.every((c) => !crossed[c])));
+      if (candidates.reduce((n, l) => n + l.length, 0) === before) break;
+    }
+    let pick = 0;
+    for (let k = 1; k < open.length; k++) if (candidates[k]!.length < candidates[pick]!.length) pick = k;
+    const rest = open.filter((_, k) => k !== pick);
+    for (const p of candidates[pick]!) {
       placed.push(p); room.apply(p, true);
-      const stop = consistentSoFar(depth + 1) && dfs(depth + 1);
+      const stop = dfs(rest);
       room.apply(p, false); placed.pop();
       if (stop) return true;
     }
     return false;
   };
-  dfs(0);
+  dfs(lists.map((_, i) => i));
   return res;
+}
+
+function bitCount(n: number): number {
+  let c = 0;
+  for (let m = n; m; m &= m - 1) c++;
+  return c;
 }
 
 const SAMPLE = 40;

@@ -3,13 +3,15 @@
   import type { GameController } from '../GameController.svelte';
   import UiIcon from './icons/UiIcon.svelte';
 
-  /** The level map: 30 levels in three rows of ten, unlocked one by one, a green tick once cleared. */
+  /** The level map: 50 levels in five groups of ten, unlocked one by one, a green tick once cleared. */
   let { game }: { game: GameController } = $props();
   const h = $derived(game.s.home);
   const tiers = $derived([
     { name: h.easy, tier: 'easy' },
     { name: h.medium, tier: 'medium' },
     { name: h.hard, tier: 'hard' },
+    { name: h.extreme, tier: 'extreme' },
+    { name: h.nightmare, tier: 'nightmare' },
   ] as const);
   const levels = Array.from({ length: LEVEL_COUNT }, (_, i) => i);
   const state = (i: number) => (game.progress.levelsWon.includes(i) ? 'won' : i < game.unlocked ? 'open' : 'locked');
@@ -55,6 +57,8 @@
   h2.easy { color: #7ee2a8; }
   h2.medium { color: var(--gold); }
   h2.hard { color: #ff8fa3; }
+  h2.extreme { color: #c58bff; }
+  h2.nightmare { color: #ff5c5c; }
   .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
   .tile {
     position: relative; aspect-ratio: 1; border-radius: 16px; border: 1.5px solid var(--edge);
@@ -65,6 +69,8 @@
   .tile.easy.open { border-color: #7ee2a8; }
   .tile.medium.open { border-color: var(--gold); }
   .tile.hard.open { border-color: #ff8fa3; }
+  .tile.extreme.open { border-color: #c58bff; }
+  .tile.nightmare.open { border-color: #ff5c5c; }
   .tile.won { background: linear-gradient(135deg, #24735a, #164a3a); border-color: #3fcf8e; }
   .tile.locked { opacity: 0.4; cursor: default; }
   .tick {
@@ -76,7 +82,7 @@
   @media (min-width: 900px) {
     .levels { justify-content: center; padding: 32px; }
     header { width: min(100%, 1180px); }
-    .tiers { width: min(100%, 1180px); display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .tiers { width: min(100%, 1180px); display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
     h1 { font-size: 34px; }
   }
   @media (hover: hover) {

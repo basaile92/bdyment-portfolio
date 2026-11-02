@@ -1,8 +1,8 @@
-import { EXPERT_POOL, HARD_POOL, LEVEL_ROOMS, MEDIUM_POOL, ROOM_VARIANTS, type StoredRoom } from '../domain';
+import { EXPERT_POOL, EXTREME_POOL, HARD_POOL, INSANE_POOL, LEVEL_ROOMS, MEDIUM_POOL, NIGHTMARE_POOL, ROOM_VARIANTS, type StoredRoom } from '../domain';
 
 /**
  * The three kinds of game:
- *  - level: the 30 campaign rooms, unlocked one by one (1-10 easy, 11-20 medium, 21-30 hard);
+ *  - level: the 50 campaign rooms, unlocked one by one (easy, medium, hard, extreme, nightmare: ten each);
  *  - daily: one hard room a day, the same for everybody, a single attempt;
  *  - run: rooms one after another, from medium to ever harder, until the first failure.
  */
@@ -12,17 +12,31 @@ export type PrismjackMode =
   | { readonly kind: 'run'; readonly step: number };
 
 export const LEVEL_COUNT = LEVEL_ROOMS.length;
-export type LevelTier = 'easy' | 'medium' | 'hard';
+export type LevelTier = 'easy' | 'medium' | 'hard' | 'extreme' | 'nightmare';
 
 export function levelTier(index: number): LevelTier {
-  return index < 10 ? 'easy' : index < 20 ? 'medium' : 'hard';
+  const tiers: LevelTier[] = ['easy', 'medium', 'hard', 'extreme', 'nightmare'];
+  return tiers[Math.min(tiers.length - 1, Math.floor(index / 10))] ?? 'easy';
 }
 
-/** Endless run: 3 medium rooms, 4 hard ones, then expert rooms for as long as the player lasts. */
+/**
+ * Endless run, room by room: 3 medium, 4 hard, 4 expert (five jewels), 4 extreme (six jewels, two tiny ones),
+ * 5 with six jewels and two or three pillars, then nightmare rooms (seven jewels, three or four pillars)
+ * for as long as the player lasts —
+ * with an alarm that gets stricter and stricter (see runQuietRatio).
+ */
+const RUN_TIERS: readonly (readonly [until: number, pool: readonly StoredRoom[]])[] = [
+  [3, MEDIUM_POOL], [7, HARD_POOL], [11, EXPERT_POOL], [15, EXTREME_POOL], [20, INSANE_POOL], [Infinity, NIGHTMARE_POOL],
+];
+
 export function runPool(step: number): readonly StoredRoom[] {
-  if (step < 3 && MEDIUM_POOL.length) return MEDIUM_POOL;
-  if (step < 7 && HARD_POOL.length) return HARD_POOL;
-  return EXPERT_POOL.length ? EXPERT_POOL : HARD_POOL;
+  const usable = RUN_TIERS.filter(([, pool]) => pool.length > 0);
+  return (usable.find(([until]) => step < until) ?? usable.at(-1))?.[1] ?? HARD_POOL;
+}
+
+/** Share of the tests that stay quiet: the usual 60 %, then 2 points less per room after the 15th, down to 30 %. */
+export function runQuietRatio(step: number): number {
+  return Math.max(0.3, 0.6 - 0.02 * Math.max(0, step - 14));
 }
 
 /** A room and its mirror variant. */

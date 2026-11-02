@@ -70,7 +70,7 @@
       <span class="badge"><span class="bars"><i></i><i></i><i></i></span></span>
       <span class="text">
         <strong>{h.run}</strong>
-        <small>{h.runSub(p.runBest)}</small>
+        <small>{p.run ? h.runResume(p.run.step + 1) : h.runSub(p.runBest)}</small>
       </span>
       <span class="go" aria-hidden="true">›</span>
     </button>

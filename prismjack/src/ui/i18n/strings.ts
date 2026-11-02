@@ -69,6 +69,7 @@ export interface Strings {
     readonly dailyDone: (next: string) => string;
     readonly streak: (n: number) => string;
     readonly run: string;
+    readonly runResume: (room: number) => string;
     readonly runSub: (best: number) => string;
     readonly tutorial: string;
     readonly tutorialSub: string;
@@ -76,12 +77,16 @@ export interface Strings {
     readonly easy: string;
     readonly medium: string;
     readonly hard: string;
+    readonly extreme: string;
+    readonly nightmare: string;
     readonly locked: string;
     readonly levelLabel: (n: number, state: 'won' | 'open' | 'locked') => string;
   };
   readonly runOver: (rooms: number, best: number) => string;
   /** What each of the first levels teaches, said by the thief when it opens. */
   readonly levelIntro: readonly string[];
+  /** Level 31, the first with the tiniest jewels (a single cell, half a cell). */
+  readonly tinyJewelsIntro: string;
   readonly levelGeneric: (n: number) => string;
   readonly dailyIntro: string;
   readonly runIntro: (room: number) => string;

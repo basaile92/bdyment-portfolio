@@ -79,6 +79,10 @@ export const SHAPES = {
   bigTriangle: shape('bigTriangle', [[0, 0, 'NE'], [1, 0, 'full'], [2, 0, 'full'], [3, 0, 'NW'], [1, 1, 'NE'], [2, 1, 'NW']]),
   /** Square standing on a corner, 2 × 2 cells. */
   diamond: shape('diamond', [[0, 0, 'SE'], [1, 0, 'SW'], [0, 1, 'NE'], [1, 1, 'NW']]),
+  /** A single whole cell: four straight walls, the smallest jewel. */
+  cell: shape('cell', [[0, 0, 'full']]),
+  /** Half a cell cut along its diagonal: one facet, two short walls. */
+  halfTriangle: shape('halfTriangle', [[0, 0, 'SE']]),
   /** Slanted bar, one cell wide and three tall, leaning the other way. */
   trapezoid: shape('trapezoid', [[0, 0, 'SE'], [0, 1, 'full'], [0, 2, 'NW']]),
 } as const;

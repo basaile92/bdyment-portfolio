@@ -1,4 +1,20 @@
+import type { FacetOrientation, JewelColor, PortId, StoredRoom, SurfaceKey } from '../domain';
+
 export type Language = 'fr' | 'en' | 'es' | 'de' | 'it' | 'pt' | 'ja' | 'ko' | 'zh';
+
+/**
+ * A run in progress, kept so it can be picked up later (same browser, same phone): the room itself
+ * (not its index, so it survives new room pools), the torches lit in order, the drawing, the empty marks
+ * and the wrong plans. `room` is null between two rooms: the next one is drawn when resuming.
+ */
+export interface SavedRun {
+  readonly step: number;
+  readonly room: { readonly stored: StoredRoom; readonly variant: number } | null;
+  readonly shots: readonly PortId[];
+  readonly plan: readonly (readonly [SurfaceKey, JewelColor, FacetOrientation?])[];
+  readonly empties: readonly number[];
+  readonly wrongPlans: number;
+}
 
 export interface Settings {
   readonly sound: boolean;
@@ -19,6 +35,8 @@ export interface Progress {
   readonly lastDailyWon: string | null;
   /** Last daily prismjack finished, won or caught: the app then opens on a free prismjack. */
   readonly lastDailyPlayed: string | null;
+  /** The run in progress, if any (resumed from the home menu). */
+  readonly run?: SavedRun | null;
   readonly settings: Settings;
 }
 

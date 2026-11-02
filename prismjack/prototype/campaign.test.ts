@@ -19,7 +19,13 @@ const c = (w: number, h: number, specs: JewelSpec[], pillars: P[] = []): Config 
 
 const SMALL = R('smallTriangle', 'blue'), LEG = R('legTriangle', 'red'), BIG = R('bigTriangle', 'yellow');
 const LOS = R('diamond', 'yellow'), TRAP = R('trapezoid', 'white'), SQ = R('square', 'red');
+const CELL = R('cell', 'blue'), HALF = R('halfTriangle', 'red'), HALF2 = R('halfTriangle', 'white'), CELL2 = R('cell', 'yellow');
 const FOUR = [SMALL, LEG, LOS, TRAP];
+const SIX = [SMALL, LEG, LOS, TRAP, CELL, HALF];
+const SIX_B = [SMALL, LEG, BIG, LOS, CELL2, HALF2];
+const SEVEN_A = [SMALL, LEG, BIG, LOS, TRAP, CELL, HALF];
+const SEVEN_B = [SMALL, LEG, LOS, TRAP, CELL, CELL2, HALF2];
+const SEVEN_C = [LEG, BIG, LOS, CELL, CELL2, HALF, HALF2];
 const FIVE = [SMALL, LEG, BIG, LOS, TRAP];
 
 export const LEVELS: Config[] = [
@@ -56,14 +62,43 @@ export const LEVELS: Config[] = [
   c(8, 10, FIVE, [['prism', 'square2'], ['black', 'square1']]),
   c(8, 10, FIVE, [['clear', 'square2'], ['prism', 'square1']]),
   c(8, 10, FIVE, [['black', 'square2'], ['clear', 'losange2'], ['prism', 'square1']]),
+  // Extreme: six jewels including the two smallest (a single cell, half a cell), colours shared.
+  c(8, 8, SIX),
+  c(8, 8, SIX, [['black', 'square1']]),
+  c(8, 9, SIX, [['clear', 'losange2']]),
+  c(8, 9, SIX_B, [['prism', 'square1']]),
+  c(9, 9, SIX),
+  c(9, 9, SIX, [['black', 'square1'], ['clear', 'losange2']]),
+  c(9, 9, SIX_B, [['prism', 'square2']]),
+  c(9, 9, SIX, [['black', 'square1'], ['prism', 'square1']]),
+  c(9, 9, SIX_B, [['black', 'square1'], ['clear', 'losange2']]),
+  c(9, 9, SIX_B, [['black', 'square1'], ['clear', 'losange2'], ['prism', 'square1']]),
+  // Nightmare: seven jewels (up to four tiny ones) and two to four pillars on 9 × 9.
+  c(9, 9, SEVEN_A, [['black', 'square1'], ['clear', 'square1']]),
+  c(9, 9, SEVEN_B, [['prism', 'square1'], ['black', 'square1']]),
+  c(9, 9, SEVEN_A, [['black', 'square1'], ['clear', 'losange2'], ['prism', 'square1']]),
+  c(9, 9, SEVEN_C, [['black', 'square1'], ['black', 'square1']]),
+  c(9, 9, SEVEN_B, [['clear', 'losange2'], ['prism', 'square1'], ['black', 'square1']]),
+  c(9, 9, SEVEN_C, [['prism', 'square1'], ['prism', 'square1'], ['black', 'square1']]),
+  c(9, 9, SEVEN_A, [['black', 'square2'], ['clear', 'losange2'], ['prism', 'square1']]),
+  c(9, 9, SEVEN_C, [['black', 'square1'], ['clear', 'square1'], ['prism', 'square1'], ['black', 'square1']]),
+  c(9, 9, SEVEN_B, [['prism', 'square2'], ['clear', 'losange2'], ['black', 'square1'], ['black', 'square1']]),
+  c(9, 9, SEVEN_C, [['black', 'square1'], ['clear', 'losange2'], ['prism', 'square1'], ['prism', 'square1']]),
 ];
 
 /** Pools: medium, hard (daily heist), very hard. Pillars are mixed at random. */
 const POOL_PILLARS: P[][] = [[], [['black', 'square1']], [['clear', 'losange2']], [['prism', 'square1']], [['black', 'square1'], ['clear', 'losange2']], [['prism', 'square2'], ['black', 'square1']]];
+/** Two or three pillars, prisms often: the last tier of the run. */
+const HEAVY_PILLARS: P[][] = [[['prism', 'square1'], ['black', 'square1']], [['prism', 'square2'], ['clear', 'losange2']], [['black', 'square1'], ['clear', 'losange2'], ['prism', 'square1']]];
+/** Three or four pillars: the nightmare tier. */
+const NIGHTMARE_PILLARS: P[][] = [[['black', 'square1'], ['clear', 'losange2'], ['prism', 'square1']], [['prism', 'square1'], ['prism', 'square1'], ['black', 'square1']], [['black', 'square1'], ['clear', 'square1'], ['prism', 'square1'], ['black', 'square1']]];
 export const TIERS: Record<string, { board: BoardSize; specs: JewelSpec[]; pillarSets: P[][] }> = {
   medium: { board: { width: 7, height: 7 }, specs: [SMALL, LEG, LOS], pillarSets: POOL_PILLARS },
   hard: { board: { width: 7, height: 8 }, specs: FOUR, pillarSets: POOL_PILLARS },
   expert: { board: { width: 8, height: 8 }, specs: FIVE, pillarSets: POOL_PILLARS },
+  extreme: { board: { width: 8, height: 9 }, specs: SIX, pillarSets: POOL_PILLARS },
+  insane: { board: { width: 9, height: 9 }, specs: SIX_B, pillarSets: HEAVY_PILLARS },
+  nightmare: { board: { width: 9, height: 9 }, specs: SEVEN_B, pillarSets: NIGHTMARE_PILLARS },
 };
 
 const COLORS = ['red', 'blue', 'yellow', 'white'] as const;
@@ -109,6 +144,16 @@ const toRoom = (pillars: Pillar[], placed: Placement[], extra: object) => ({
   ...extra, jewels: placed.map((p) => p.cells.map((q) => [q.x, q.y, q.part])), pillars,
 });
 
+/** Single solution when every torch is fired, without measuring how hard (too slow past five jewels). */
+function uniqueOnly(board: BoardSize, pillars: Pillar[], specs: JewelSpec[], room: Room, placed: Placement[]) {
+  const t0 = performance.now();
+  for (const p of placed) room.apply(p, true);
+  const all = fireInOrder(room, allPorts(board));
+  for (const p of placed) room.apply(p, false);
+  const r = solve(board, pillars, specs, all, { maxNodes: Number(process.env.MAX_NODES ?? 1_500_000) });
+  return { unique: r.count === 1 && !r.aborted, tests: 0, effort: r.nodes, aborted: r.aborted, ms: performance.now() - t0 };
+}
+
 it.skipIf(process.env.GEN !== 'levels')('generates the campaign levels', () => {
   const out = process.env.OUT ?? '/tmp/levels.json';
   const done: Record<number, unknown> = existsSync(out) ? JSON.parse(readFileSync(out, 'utf8')) : {};
@@ -125,7 +170,7 @@ it.skipIf(process.env.GEN !== 'levels')('generates the campaign levels', () => {
       const room = new Room(cfg.board, pillars);
       const placed = randomJewels(room, cfg.specs, random);
       if (!placed) continue;
-      const r = rate(cfg.board, pillars, cfg.specs, placed, random, Number(process.env.PLAYERS ?? (hard ? 2 : 3)));
+      const r = process.env.NO_RATE === '1' ? uniqueOnly(cfg.board, pillars, cfg.specs, room, placed) : rate(cfg.board, pillars, cfg.specs, placed, random, Number(process.env.PLAYERS ?? (hard ? 2 : 3)));
       log(`L${index + 1} try ${tries}: unique=${r.unique} score=${score(r)} tests=${r.tests} effort=${r.effort} aborted=${r.aborted} ${(r.ms / 1000).toFixed(1)}s`);
       if (!r.unique || (r.aborted && process.env.ACCEPT_ABORTED !== '1')) continue;
       found.push({ s: score(r), room: toRoom(pillars, placed, { score: score(r), tests: r.tests, effort: r.effort }) });
@@ -154,7 +199,7 @@ it.skipIf(process.env.GEN !== 'pool')('generates a pool of verified rooms', () =
     const t0 = performance.now();
     for (const p of placed) room.apply(p, true);
     const all = fireInOrder(room, allPorts(tier.board));
-    const r = solve(tier.board, pillars, tier.specs, all, { maxNodes: 1_500_000 });
+    const r = solve(tier.board, pillars, tier.specs, all, { maxNodes: Number(process.env.MAX_NODES ?? 1_500_000) });
     log(`${process.env.TIER} try ${tries}: count=${r.count} aborted=${r.aborted} nodes=${r.nodes} ${((performance.now() - t0) / 1000).toFixed(1)}s`);
     if (r.count !== 1 || r.aborted) continue;
     rooms.push(toRoom(pillars, placed, {}));

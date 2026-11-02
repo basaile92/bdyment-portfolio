@@ -2,8 +2,8 @@ import { renderShareCard, type ShareCard } from './shareCard';
 import type { ShareOutcome, Sharer } from '../ports/Sharer';
 import {
   alarms, eraseAt, startMode, testsLimit, testsUsed, untilNextDay, clearPlan, dayOf, drawSurface, EMPTY_HISTORY, fireLaser, LEVEL_COUNT, markEmpty,
-  missingJewels, recordCaught, recordPrismjack, resetProgress, redo, remember, saveSettings, shotAt, submitPlan, undo, unlockedLevels,
-  type PrismjackMode, type PrismjackState, type PlanHistory, type Shot,
+  missingJewels, recordCaught, restoreRun, roomFor, runQuietRatio, saveRun, snapshotRun, startRoom, recordPrismjack, resetProgress, redo, remember, saveSettings, shotAt, submitPlan, undo, unlockedLevels,
+  type PrismjackMode, type PrismjackState, type PlanHistory, type RoomPick, type Shot,
 } from '../application';
 import { colorsIn, JEWEL_COLORS, recognizedJewels, type JewelColor, type PortId, type Surface, type SurfaceKey } from '../domain';
 import type { Haptics } from '../ports/Haptics';
@@ -15,6 +15,8 @@ import type { Speech } from './presenters/messages';
 import { stringsFor, type Language, type Strings } from './i18n/strings';
 import { tipText, type TipEvent } from './presenters/tips';
 
+/** First level with the tiniest jewels (index): it says so. */
+const TINY_JEWELS_LEVEL = 30;
 const SHARE_URL = 'https://bdyment.com/prismjack/';
 const COLOR_EMOJI: Record<JewelColor, string> = { red: '🟥', blue: '🟦', yellow: '🟨', white: '⬜' };
 
@@ -118,6 +120,7 @@ export class GameController {
 
   constructor(private readonly deps: GameDependencies) {
     this.prismjack = startMode({ kind: 'level', index: 0 }, deps.randomFor(null));
+    this.watchRun();
   }
 
   /** The app opens on the home menu (after the welcome card on a first launch). */
@@ -160,10 +163,19 @@ export class GameController {
 
   // ---------- prismjacks ----------
 
-  start(mode: PrismjackMode): void {
+  /** The room of the run being played (kept to save the run as it goes). */
+  private runPick: RoomPick | null = null;
+
+  start(mode: PrismjackMode, resumed?: { pick: RoomPick; state: PrismjackState }): void {
     this.mode = mode;
     this.screen = 'game';
-    this.prismjack = startMode(mode, this.deps.randomFor(null));
+    if (mode.kind === 'run') {
+      this.runPick = resumed?.pick ?? roomFor(mode, this.deps.randomFor(null).next());
+      this.prismjack = resumed?.state ?? startRoom(this.runPick, runQuietRatio(mode.step));
+    } else {
+      this.runPick = null;
+      this.prismjack = startMode(mode, this.deps.randomFor(null));
+    }
     this.history = EMPTY_HISTORY;
     this.selected = null;
     this.flashed = null;
@@ -179,7 +191,7 @@ export class GameController {
   /** What the thief says when a room opens: the level's lesson, today's heist, the run's progress. */
   private introText(mode: PrismjackMode): string {
     const s = this.s;
-    if (mode.kind === 'level') return s.levelIntro[mode.index] ?? s.levelGeneric(mode.index + 1);
+    if (mode.kind === 'level') return s.levelIntro[mode.index] ?? (mode.index === TINY_JEWELS_LEVEL ? s.tinyJewelsIntro : s.levelGeneric(mode.index + 1));
     if (mode.kind === 'daily') return s.dailyIntro;
     return s.runIntro(mode.step + 1);
   }
@@ -192,8 +204,31 @@ export class GameController {
     if (!this.dailyDone) this.start({ kind: 'daily', day: this.today() });
   }
 
+  /** A run left unfinished is picked up where it was (same room, same tests, same drawing). */
   startRun(): void {
-    this.start({ kind: 'run', step: 0 });
+    const saved = this.progress.run;
+    if (!saved) {
+      this.start({ kind: 'run', step: 0 });
+      return;
+    }
+    const restored = restoreRun(saved);
+    this.start({ kind: 'run', step: saved.step }, restored ?? undefined);
+  }
+
+  private saveTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** Saves the run in progress shortly after every change (torch, drawing…), never once it is over. */
+  private watchRun(): void {
+    $effect.root(() => {
+      $effect(() => {
+        const state = this.prismjack, mode = this.mode, pick = this.runPick;
+        clearTimeout(this.saveTimer);
+        if (mode.kind !== 'run' || !pick || state.status !== 'planning') return;
+        this.saveTimer = setTimeout(() => {
+          void saveRun(this.deps.progress, snapshotRun(mode.step, pick, state)).then((p) => (this.progress = p));
+        }, 400);
+      });
+    });
   }
 
   /** Retry: the same level; a new run; the daily heist allows a single attempt (back home). */

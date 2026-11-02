@@ -31,7 +31,12 @@ export function shotsToRevealAll(board: BoardSize, surfaces: SurfaceMap, pillars
 
 export function alarmThresholds(board: BoardSize, surfaces: SurfaceMap, jewelCount: number, pillars: readonly Pillar[] = []): AlarmThresholds {
   const all = shotsToRevealAll(board, surfaces, pillars);
-  return { quiet: Math.max(jewelCount + 2, Math.round(all * QUIET_RATIO)), all };
+  return { quiet: quietTests(all, jewelCount), all };
+}
+
+/** How many tests stay quiet: a share of those that light every sensor, never fewer than the jewels + 2. */
+export function quietTests(all: number, jewelCount: number, ratio = QUIET_RATIO): number {
+  return Math.max(jewelCount + 2, Math.round(all * ratio));
 }
 
 /**
