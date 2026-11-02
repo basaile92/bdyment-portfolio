@@ -15,8 +15,9 @@ const CUES: Record<SoundCue, readonly Note[]> = {
   draw: [{ freq: 660, at: 0, dur: 0.05, type: 'triangle', gain: 0.06 }],
   erase: [{ freq: 420, to: 260, at: 0, dur: 0.07, type: 'triangle', gain: 0.05 }],
   tick: [{ freq: 900, at: 0, dur: 0.03, type: 'square', gain: 0.02 }],
-  alarm: [0, 0.22, 0.44].map((at) => ({ freq: 880, to: 620, at, dur: 0.18, type: 'square' as const, gain: 0.04 })),
-  caught: [0, 0.3, 0.6, 0.9].map((at) => ({ freq: 700, to: 500, at, dur: 0.26, type: 'square' as const, gain: 0.05 })),
+  // Warnings stay soft in headphones: rounded waves, lower pitch, quieter.
+  alarm: [0, 0.24, 0.48].map((at) => ({ freq: 740, to: 560, at, dur: 0.18, type: 'triangle' as const, gain: 0.06 })),
+  caught: [0, 0.32, 0.64].map((at, i) => ({ freq: 560 - i * 60, to: 420 - i * 50, at, dur: 0.28, type: 'triangle' as const, gain: 0.06 })),
   success: [523, 659, 784, 1047].map((freq, i) => ({ freq, at: i * 0.09, dur: 0.16, type: 'triangle' as const, gain: 0.07 })),
 };
 
@@ -38,6 +39,9 @@ export class WebAudioSound implements Sound {
 
   private audio(): AudioContext | null {
     try {
+      // iOS: mix with the player's music and stay silent when the ring/silent switch is on.
+      const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+      if (session && session.type !== 'ambient') session.type = 'ambient';
       this.context ??= new AudioContext();
       if (this.context.state === 'suspended') void this.context.resume();
       return this.context;

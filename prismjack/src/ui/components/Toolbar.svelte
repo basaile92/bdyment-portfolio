@@ -94,7 +94,8 @@
   @media (max-width: 380px) {
     .go { width: 84px; font-size: 18px; }
     .go small { display: none; }
-    .gem > svg:last-child { display: none; }
+    /* « Nächstes Level », « Próximo nível »…: the continue label needs the full width, in two lines. */
+    .go.next { width: 112px; font-size: 12px; line-height: 1.1; }
     .tool { font-size: 12px; gap: 4px; }
   }
 

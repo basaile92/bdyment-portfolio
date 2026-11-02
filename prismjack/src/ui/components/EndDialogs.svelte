@@ -10,7 +10,7 @@
 
   const s = $derived(game.s);
   $effect(() => {
-    if ((game.dialog === 'win' || game.dialog === 'caught') && game.mode.kind !== 'level') untrack(() => void game.prepareShareImage());
+    if ((game.dialog === 'win' || game.dialog === 'caught') && (game.mode.kind === 'daily' || game.mode.kind === 'run')) untrack(() => void game.prepareShareImage());
   });
   const shareLabel = $derived(game.shareOutcome === 'shared' ? s.shared : game.shareOutcome === 'copied' ? s.copied : s.share);
 </script>
@@ -18,6 +18,10 @@
 {#snippet shareButton()}
   {#if game.shareImage}<img class="preview" src={game.shareImage.url} alt="" />{/if}
   <button class="btn share" onclick={() => game.shareResult()}><UiIcon name="share" size={18} /> {shareLabel}</button>
+  {#if game.shareOutcome === 'failed'}
+    <!-- No share sheet and no clipboard: the text, selected, ready to copy by hand. -->
+    <label class="manual">{s.shareManual}<textarea readonly rows="5" onfocus={(e) => e.currentTarget.select()}>{game.shareText()}</textarea></label>
+  {/if}
 {/snippet}
 
 <Modal open={game.dialog === 'win'} label={s.winTitle} onclose={() => (game.dialog = 'none')}>
@@ -45,7 +49,7 @@
   {#if game.mode.kind === 'daily'}
     <p class="center daily">{s.home.dailyDone(game.nextDailyIn())}</p>
   {/if}
-  {#if game.mode.kind !== 'level'}{@render shareButton()}{/if}
+  {#if game.mode.kind === 'daily' || game.mode.kind === 'run'}{@render shareButton()}{/if}
   <div class="row">
     <button class="btn" onclick={() => (game.dialog = 'none')}>{s.seeRoom}</button>
     <button class="btn primary" onclick={() => game.continueAfter()}>{game.continueLabel}</button>
@@ -53,6 +57,8 @@
 </Modal>
 
 <style>
+  .manual { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 800; color: var(--muted); }
+  .manual textarea { width: 100%; resize: none; border-radius: 10px; border: 2px solid var(--edge); background: #0b0f30; color: #dbe1ff; font: 13px/1.35 ui-monospace, monospace; padding: 8px; user-select: text; -webkit-user-select: text; }
   .daily { font-size: 14px; color: var(--muted); }
   .lamps { display: flex; justify-content: center; }
   .center { text-align: center; }

@@ -1,6 +1,7 @@
+import { DAILY_FOUR, DAILY_SUNDAY, HARD_POOL } from '../../src/domain';
 import { describe, expect, it } from 'vitest';
 import {
-  testsLimit, dailySeed, dayOf, drawSurface, EMPTY_HISTORY, fireLaser, LEVEL_COUNT, missingJewels, roomFor, startMode, unlockedLevels, previousDay,
+  testsLimit, dailyPick, dailyWeekday, dailySeed, dayOf, drawSurface, EMPTY_HISTORY, fireLaser, LEVEL_COUNT, missingJewels, roomFor, startMode, unlockedLevels, previousDay,
   recordCaught, recordPrismjack, redo, resetProgress, untilNextDay, remember, startPrismjack, submitPlan, undo,
 } from '../../src/application';
 import { SeededRandom } from '../../src/adapters/SeededRandom';
@@ -121,3 +122,31 @@ describe('progress', () => {
     expect(startMode({ kind: 'level', index: 0 }, { next: () => 0 }).jewels).toHaveLength(1);
   });
 });
+
+describe('the daily heist calendar', () => {
+  it('starts on a Monday with four jewels and ends the week with pillars', () => {
+    expect(dailyWeekday('2026-11-02')).toBe(0);
+    expect(dailyPick('2026-11-02').room).toBe(DAILY_FOUR[0]);
+    expect(dailyPick('2026-11-08').room).toBe(DAILY_SUNDAY[0]);
+    expect(dailyPick('2026-11-08').room.pillars?.length).toBeGreaterThan(0);
+  });
+
+  it('never gives the same room twice in a year, and never the run rooms', () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(Date.UTC(2026, 10, 2 + i));
+      const day = d.toISOString().slice(0, 10);
+      const pick = dailyPick(day);
+      const key = `${JSON.stringify(pick.room.jewels)}#${pick.variant}`;
+      expect(seen.has(key)).toBe(false);
+      seen.add(key);
+      expect(HARD_POOL.includes(pick.room)).toBe(false);
+    }
+  });
+
+  it('is the same for everybody and works before the first week too', () => {
+    expect(dailyPick('2027-03-14')).toEqual(dailyPick('2027-03-14'));
+    expect(() => dailyPick('2026-10-01')).not.toThrow();
+  });
+});
+

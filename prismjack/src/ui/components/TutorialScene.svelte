@@ -92,7 +92,7 @@
     return pts.map(([x, y]) => px(x, y).join(',')).join(' ');
   }
   const allPorts = $derived(Array.from({ length: 2 * (width + height) }, (_, i) => i));
-  const lastStates = $derived(results.at(-1)?.prismStates ?? realPillars.map(() => 0));
+  const lastStates = $derived(results[results.length - 1]?.prismStates ?? realPillars.map(() => 0));
   const pathColor = (mask: number) => {
     const c = colorsIn(mask);
     return c.length ? JEWEL_HEX[c[c.length - 1] ?? 'white'] : '#fffbe8';

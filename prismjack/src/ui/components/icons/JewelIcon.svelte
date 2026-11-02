@@ -2,7 +2,7 @@
   import { shapeSize, type ShapeCell } from '../../../domain';
   import { PART_POLYGON, translate } from '../../presenters/shapes';
 
-  /** A jewel drawn to grid scale, with the grid lines visible through it. */
+  /** A jewel drawn to grid scale, with the grid lines visible through it. `--jewel-cell` (CSS) overrides the cell size, keeping every jewel at the same scale. */
   let { cells, color, cell = 14 }: { cells: readonly ShapeCell[]; color: string; cell?: number } = $props();
 
   const size = $derived(shapeSize(cells));
@@ -15,6 +15,7 @@
   viewBox="-0.05 -0.05 {size.width + 0.1} {size.height + 0.1}"
   width={size.width * cell}
   height={size.height * cell}
+  style="width: calc({size.width} * var(--jewel-cell, {cell}px)); height: calc({size.height} * var(--jewel-cell, {cell}px))"
   aria-hidden="true"
 >
   {#each squares as s (`${s.x},${s.y}`)}

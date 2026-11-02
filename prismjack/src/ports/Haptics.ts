@@ -5,4 +5,6 @@ export interface Haptics {
   tick(): void;
   success(): void;
   failure(): void;
+  /** The player's setting: vibrations on or off. */
+  setEnabled(enabled: boolean): void;
 }

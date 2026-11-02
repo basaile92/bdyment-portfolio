@@ -14,7 +14,7 @@ export class DeviceSharer implements Sharer {
       return await this.shareWeb(text, image);
     } catch (error) {
       // Closing the share sheet is not a failure worth reporting.
-      if (error instanceof Error && /cancel|abort/i.test(`${error.name} ${error.message}`)) return 'failed';
+      if (error instanceof Error && /cancel|abort/i.test(`${error.name} ${error.message}`)) return 'cancelled';
       return this.copy(text);
     }
   }

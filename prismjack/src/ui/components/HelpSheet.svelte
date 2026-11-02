@@ -33,7 +33,7 @@
   <svg viewBox="0 0 1 1" width="14" height="14" aria-hidden="true">{#if !game.symbols}<circle cx=".5" cy=".5" r=".4" fill={JEWEL_HEX[c]} />{:else}<Glyph glyph={GLYPH[c]} x={0.5} y={0.5} size={0.95} fill={JEWEL_HEX[c]} />{/if}</svg>
 {/snippet}
 
-<Modal open={game.dialog === 'help'} label={s.helpTitle} onclose={() => (game.tutorial ? game.endTutorial(false) : (game.dialog = 'none'))}>
+<Modal open={game.dialog === 'help'} label={s.helpTitle} onclose={() => (game.dialog = 'none')}>
   <div class="dots" aria-label={s.helpPage(page + 1, pages.length)}>
     {#each pages as p, i (p.id)}<button class:on={i === page} aria-label={s.helpPage(i + 1, pages.length)} onclick={() => (page = i)}></button>{/each}
   </div>
@@ -104,10 +104,7 @@
 
   <div class="row nav">
     {#if page > 0}<button class="btn" onclick={() => page--}>{s.previous}</button>{/if}
-    {#if last && game.tutorial}
-      <button class="btn" onclick={() => game.endTutorial(false)}>{s.backHome}</button>
-      <button class="btn primary" onclick={() => game.endTutorial(true)}>{s.tutorialPlay}</button>
-    {:else if last}
+    {#if last}
       <button class="btn primary" onclick={() => (game.dialog = 'none')}>{s.gotIt}</button>
     {:else}
       <button class="btn primary" onclick={() => page++}>{s.next2}</button>
@@ -119,8 +116,11 @@
   h3 { margin: 0; font-size: 18px; font-weight: 900; color: #fff; text-align: center; }
   .num { font-size: 12px; color: var(--muted); font-weight: 800; margin-right: 4px; }
   .dots { display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; }
-  .dots button { width: 8px; height: 8px; padding: 0; border-radius: 4px; border: none; background: var(--edge); transition: width 0.2s; }
-  .dots button.on { width: 20px; background: var(--gold); }
+  /* Small dots, but a 44 px finger target around each (the pseudo-element draws the dot). */
+  .dots { gap: 0; }
+  .dots button { position: relative; width: 26px; height: 44px; margin: -14px 0; padding: 0; border: none; background: none; }
+  .dots button::after { content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; border-radius: 4px; background: var(--edge); transform: translate(-50%, -50%); transition: width 0.2s; }
+  .dots button.on::after { width: 20px; background: var(--gold); }
   .panel { min-height: 0; display: flex; flex-direction: column; gap: 8px; }
   .panel p { margin: 0; font-size: 14.5px; line-height: 1.45; }
   .pic { width: 100%; height: auto; display: block; border-radius: 10px; background: #1c2160; }

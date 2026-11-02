@@ -1,5 +1,11 @@
+<script lang="ts" module>
+  import { grainTile as tile } from '../presenters/grain';
+  /** Drawn once for every room. */
+  const GRAIN = tile();
+</script>
+
 <script lang="ts">
-  import { ABSORBED, cellIndex, closedRegions, colorsIn, keyInsideCells, pillarCells, pillarSurfaces, prismColor, type Pillar, type PortId } from '../../domain';
+  import { ABSORBED, cellIndex, closedRegions, colorsIn, keyInsideCells, maskOf, pillarCells, pillarSurfaces, prismColor, type Pillar, type PortId } from '../../domain';
   import { describeCursor, FACET_KEYS, moveCursor, WALL_KEYS, type Cursor } from '../presenters/keyboard';
   import { laserDescription } from '../presenters/palette';
   import type { Shot } from '../../application';
@@ -45,6 +51,8 @@
   const margin = $derived(unit > 0 ? (FRAME_PAD + FRAME_EDGE) / unit : 0);
   const edgeWidth = $derived(unit > 0 ? FRAME_EDGE / unit : 0);
   const plan = $derived(game.prismjack.plan);
+  /** Test numbers on the torches stay readable (9 px at least) on big rooms and small screens. */
+  const badgeScale = $derived(unit > 0 ? Math.min(2, Math.max(1, 9 / (0.13 * unit))) : 1);
   /** Pillar cells: nothing is drawn there, nor on their borders. */
   const blocked = $derived(pillarCells(board, game.prismjack.puzzle.pillars));
   const shown = $derived(game.over ? game.prismjack.puzzle.surfaces : plan);
@@ -53,6 +61,8 @@
   const ports = $derived(Array.from({ length: 2 * (board.width + board.height) }, (_, p) => ({ p, c: portCenter(board, p), shot: game.shotAt(p) })));
   const fills = $derived(game.over ? [] : closedRegions(board, plan));
   const segments = $derived([...shown].map(([key, s]) => ({ key, color: JEWEL_HEX[s.color], seg: surfaceSegment(key, s) })));
+  /** Tutorial: the outline to draw over, dotted, while the lesson asks for the jewels. */
+  const ghost = $derived(game.coachGhost ? [...game.prismjack.puzzle.surfaces].map(([key, s]) => ({ key, seg: surfaceSegment(key, s) })) : []);
   const twins = $derived.by(() => {
     const shot = hoveredPort === null ? undefined : game.shotAt(hoveredPort);
     return shot ? new Set([shot.entry, shot.exit]) : new Set<PortId>();
@@ -354,6 +364,7 @@
         {#each [...game.prismjack.emptyCells] as i (i)}<path class="cross" d={crossPath(i)} />{/each}
       {/if}
 
+      {#each ghost as g (g.key)}<line {...lineOf(g.seg)} class="ghost" />{/each}
       {#each segments as s (s.key)}<line {...lineOf(s.seg)} class="surface" stroke={s.color} />{/each}
 
       {#if activePreview?.kind === 'draw'}
@@ -396,10 +407,10 @@
     >
       <defs>
         <!-- Frosted glass roof: light grain + slanted reflections. -->
-        <filter id="frost" x="0" y="0" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="2" seed="7" />
-          <feColorMatrix values="0 0 0 0 0.8  0 0 0 0 0.88  0 0 0 0 1  0 0 0 0.16 0" />
-        </filter>
+        <!-- A small grain tile drawn once (a live turbulence filter repainted the whole room on every change). -->
+        <pattern id="frost" patternUnits="userSpaceOnUse" width="2" height="2">
+          <image href={GRAIN} width="2" height="2" preserveAspectRatio="none" />
+        </pattern>
         <linearGradient id="sheen" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="3" y2="3" spreadMethod="repeat">
           <stop offset="0" stop-color="#fff" stop-opacity="0" />
           <stop offset=".42" stop-color="#fff" stop-opacity="0" />
@@ -437,7 +448,7 @@
       <!-- Top view of the jeweller's: opaque frosted glass panes in a steel frame, laser emitters on the walls. -->
       <g class="roof" aria-hidden="true">
         <rect class="glass" x={BAND} y={BAND} width={board.width} height={board.height} />
-        <rect x={BAND} y={BAND} width={board.width} height={board.height} filter="url(#frost)" />
+        <rect x={BAND} y={BAND} width={board.width} height={board.height} fill="url(#frost)" />
         <rect x={BAND} y={BAND} width={board.width} height={board.height} fill="url(#pane)" />
         <rect x={BAND} y={BAND} width={board.width} height={board.height} fill="url(#sheen)" />
       </g>
@@ -460,8 +471,9 @@
             {@const step = Math.min(0.2, box.w / 5)}
             <rect x={box.cx - step * 2} y={box.cy - step * 0.55} width={step * 4} height={step * 1.1} rx={step * 0.55} class="prism-legend" />
             {#each pillar.order as color, k (k)}
-              <circle cx={box.cx - step * 1.5 + k * step} cy={box.cy} r={k === (game.prismjack.pillarStates[i] ?? 0) % 4 ? step * 0.42 : step * 0.26}
-                fill={JEWEL_HEX[color]} class:now={k === (game.prismjack.pillarStates[i] ?? 0) % 4} />
+              {@const now = k === (game.prismjack.pillarStates[i] ?? 0) % 4}
+              <circle cx={box.cx - step * 1.5 + k * step} cy={box.cy} r={now ? step * 0.42 : step * 0.26} fill={JEWEL_HEX[color]} class:now />
+              {#if game.symbols}<Glyph glyph={GLYPH[color]} x={box.cx - step * 1.5 + k * step} y={box.cy} size={now ? step * 0.5 : step * 0.32} fill={inkOn(maskOf(color))} />{/if}
             {/each}
           {/if}
         </g>
@@ -529,6 +541,8 @@
       {/if}
 
       {#each ports as { p, c, shot } (p)}
+        {#if game.coachPort === p}<circle cx={c.x} cy={c.y} r={LENS * 1.9} class="coach-ring" />{/if}
+        {#if game.hintPort === p}<circle cx={c.x} cy={c.y} r={LENS * 1.9} class="mismatch-ring" />{/if}
         <g class="port" class:twin={twins.has(p) || hoveredPort === p} class:flash-in={shot !== undefined && game.flashed === shot && p === shot.entry}
           class:flash={shot !== undefined && game.flashed === shot && p === shot.exit} style="transform-origin: {c.x}px {c.y}px">
           <rect x={c.x - BAND / 2} y={c.y - BAND / 2} width={BAND} height={BAND} class="hit" />
@@ -566,8 +580,10 @@
             <circle cx={c.x} cy={c.y} r={LENS} class="lens-rim" />
             <path d="M{c.x - 0.15} {c.y - 0.06}a.17 .17 0 0 1 .11 -.105" class="gloss" />
             <!-- Which test lit this torch (both ends of a light path share the number). -->
-            <circle cx={c.x - 0.22} cy={c.y + 0.22} r=".115" class="order-badge" />
-            <text x={c.x - 0.22} y={c.y + 0.262} class="order" class:small={orderOf(shot) >= 10}>{orderOf(shot)}</text>
+            <g transform="translate({c.x - 0.22} {c.y + 0.22}) scale({badgeScale}) translate({-(c.x - 0.22)} {-(c.y + 0.22)})">
+              <circle cx={c.x - 0.22} cy={c.y + 0.22} r=".115" class="order-badge" />
+              <text x={c.x - 0.22} y={c.y + 0.262} class="order" class:small={orderOf(shot) >= 10}>{orderOf(shot)}</text>
+            </g>
             {#if shot.exit === shot.entry}
               <circle cx={c.x + 0.22} cy={c.y - 0.22} r=".1" class="back-badge" />
               <text x={c.x + 0.22} y={c.y - 0.187} class="back">↩</text>
@@ -606,8 +622,7 @@
   /* Steel glazing bars between the panes, with a faint highlight. */
   .cells rect { fill: transparent; stroke: rgba(170, 195, 255, 0.28); stroke-width: 0.045; cursor: crosshair; }
   /* Floor pressure sensors under the glass: the reason you must drop exactly on the jewels. */
-  .sensors { fill: #ff4d6d; opacity: 0.45; animation: arm 2.4s ease-in-out infinite; pointer-events: none; }
-  @keyframes arm { 50% { opacity: 0.18; } }
+  .sensors { fill: #ff4d6d; opacity: 0.35; pointer-events: none; }
   .facade { fill: none; stroke: rgba(160, 225, 255, 0.55); stroke-width: 0.05; pointer-events: none; }
   .roof { pointer-events: none; }
   .housing { stroke: #23284f; stroke-width: 0.03; }
@@ -627,6 +642,12 @@
   .finger { fill: none; stroke: #fff; stroke-opacity: 0.8; stroke-width: 0.02; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }
   .port { transition: transform 0.15s; }
+  /* Tutorial: the torch to tap pulses, the jewel to draw is dotted. */
+  /* After a wrong plan: one torch whose result the plan does not explain. */
+  .mismatch-ring { fill: none; stroke: #ff3b5c; stroke-width: 0.08; stroke-dasharray: 0.12 0.08; pointer-events: none; }
+  .coach-ring { fill: none; stroke: #ffd23f; stroke-width: 0.07; pointer-events: none; animation: coach 1.1s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  @keyframes coach { 50% { opacity: 0.35; transform: scale(1.25); } }
+  .ghost { stroke: #fff; stroke-opacity: 0.75; stroke-width: 0.05; stroke-dasharray: 0.12 0.1; stroke-linecap: round; pointer-events: none; }
   .port.twin { transform: scale(1.18); }
   @media (hover: hover) { .port:hover { transform: scale(1.18); } }
   .port.flash-in { animation: kick 0.35s; }

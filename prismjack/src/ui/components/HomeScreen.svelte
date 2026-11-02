@@ -83,7 +83,7 @@
     </button>
 
     <div class="extras">
-      <button class="pill" onclick={() => { game.tutorial = false; game.dialog = 'help'; }}><UiIcon name="help" size={18} />{h.tutorial}</button>
+      <button class="pill" onclick={() => game.startTutorial()}><UiIcon name="help" size={18} />{h.tutorial}</button>
       <button class="pill" onclick={() => (game.dialog = 'settings')}><UiIcon name="settings" size={18} />{h.settings}</button>
     </div>
   </nav>
@@ -160,6 +160,11 @@
   @media (hover: hover) {
     .card:hover:not(:disabled) { transform: translateY(-2px); background: var(--slot-on); }
     .pill:hover { background: var(--slot); }
+  }
+
+  /* Tall screens (iPad held upright): the whole menu centred, not stuck to the top. */
+  @media (min-width: 600px) and (min-height: 900px) {
+    .home { justify-content: center; }
   }
 
   /* Wide screens: the title on the left, the cards on the right. */

@@ -24,7 +24,8 @@
 </section>
 
 <style>
-  .loot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  /* One scale for every jewel: a 3 × 3 triangle must look bigger than a 2 × 2 diamond. */
+  .loot { --jewel-cell: 16px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
   h2 { margin: 0; font-family: var(--title-font); font-weight: 400; font-size: 13px; letter-spacing: 2px; color: var(--gold); }
   h2 span { font-family: 'Nunito', sans-serif; font-weight: 900; letter-spacing: 0; color: var(--muted); }
   ul { display: flex; justify-content: center; align-items: flex-end; gap: 14px; margin: 0; padding: 0; list-style: none; }

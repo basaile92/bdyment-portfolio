@@ -16,12 +16,12 @@ const forbid = (...layers) => ({
 });
 
 export default ts.config(
-  { ignores: ['dist', 'node_modules', 'android', 'ios'] },
+  { ignores: ['dist', 'node_modules', 'android', 'ios', 'prototype'] },
   js.configs.recommended,
   ...ts.configs.strict,
   ...svelte.configs['flat/recommended'],
   {
-    languageOptions: { globals: { ...globals.browser } },
+    languageOptions: { globals: { ...globals.browser, __APP_VERSION__: 'readonly' } },
     rules: {
       'max-lines-per-function': ['warn', { max: 40, skipBlankLines: true, skipComments: true }],
       'max-params': ['warn', 4],

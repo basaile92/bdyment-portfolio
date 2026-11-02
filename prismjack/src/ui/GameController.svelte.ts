@@ -2,10 +2,10 @@ import { renderShareCard, type ShareCard } from './shareCard';
 import type { ShareOutcome, Sharer } from '../ports/Sharer';
 import {
   alarms, eraseAt, startMode, testsLimit, testsUsed, untilNextDay, clearPlan, dayOf, drawSurface, EMPTY_HISTORY, fireLaser, LEVEL_COUNT, markEmpty,
-  missingJewels, recordCaught, restoreRun, roomFor, runQuietRatio, saveRun, snapshotRun, startRoom, recordPrismjack, resetProgress, redo, remember, saveSettings, shotAt, submitPlan, undo, unlockedLevels,
-  type PrismjackMode, type PrismjackState, type PlanHistory, type RoomPick, type Shot,
+  LESSON_COUNT, LESSONS, missingJewels, recordCaught, restoreRun, roomFor, runQuietRatio, saveRun, snapshotRun, startRoom, recordPrismjack, resetProgress, redo, remember, saveSettings, shotAt, submitPlan, undo, unlockedLevels,
+  type Lesson, type LessonStep, type PrismjackMode, type PrismjackState, type PlanHistory, type RoomPick, type Shot,
 } from '../application';
-import { colorsIn, JEWEL_COLORS, recognizedJewels, type JewelColor, type PortId, type Surface, type SurfaceKey } from '../domain';
+import { colorsIn, JEWEL_COLORS, portSide, recognizedJewels, type BoardSize, type JewelColor, type PortId, type Surface, type SurfaceKey } from '../domain';
 import type { Haptics } from '../ports/Haptics';
 import { NO_PROGRESS, type Progress, type ProgressStore, type Settings } from '../ports/ProgressStore';
 import type { RandomSource } from '../ports/RandomSource';
@@ -19,6 +19,13 @@ import { tipText, type TipEvent } from './presenters/tips';
 const TINY_JEWELS_LEVEL = 30;
 const SHARE_URL = 'https://bdyment.com/prismjack/';
 const COLOR_EMOJI: Record<JewelColor, string> = { red: '🟥', blue: '🟦', yellow: '🟨', white: '⬜' };
+
+/** True when the light came out right across from where it went in (same row or column). */
+function crossesStraight(board: BoardSize, entry: PortId, exit: PortId): boolean {
+  const a = portSide(board, entry), b = portSide(board, exit);
+  const opposite = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' } as const;
+  return opposite[a.side] === b.side && a.index === b.index;
+}
 
 /** One square per test: its colour, ⬛ when nothing was touched, 🌈 for a mix. */
 function shotEmoji(shot: Shot): string {
@@ -121,12 +128,18 @@ export class GameController {
   constructor(private readonly deps: GameDependencies) {
     this.prismjack = startMode({ kind: 'level', index: 0 }, deps.randomFor(null));
     this.watchRun();
+    if (typeof window !== 'undefined') {
+      const tick = () => (this.now = Date.now());
+      setInterval(tick, 30_000);
+      document.addEventListener('visibilitychange', tick);
+    }
   }
 
   /** The app opens on the home menu (after the welcome card on a first launch). */
   async init(): Promise<void> {
     this.progress = await this.deps.progress.load();
     this.deps.sound.setEnabled(this.settings.sound);
+    this.deps.haptics.setEnabled(this.settings.haptics ?? true);
     this.screen = 'home';
     if (this.settings.language === undefined) this.dialog = 'welcome';
   }
@@ -146,17 +159,25 @@ export class GameController {
     this.dialog = 'none';
   }
 
+  /** Ticks every 30 s and when the app comes back: the daily heist opens at midnight without a restart. */
+  private now = $state(0);
+
   private today(): string {
+    void this.now;
     return dayOf(this.deps.today());
   }
 
-  /** The daily prismjack is one attempt a day, won or caught. */
+  /**
+   * The daily prismjack is one attempt a day, won or caught. A day already passed counts as played too:
+   * flying west after playing must not open yesterday's heist again.
+   */
   get dailyDone(): boolean {
-    return this.progress.lastDailyPlayed === this.today();
+    return (this.progress.lastDailyPlayed ?? '') >= this.today();
   }
 
   /** "7 h 12" before the next daily prismjack. */
   nextDailyIn(): string {
+    void this.now;
     const { hours, minutes } = untilNextDay(this.deps.today());
     return this.s.duration(hours, minutes);
   }
@@ -166,7 +187,11 @@ export class GameController {
   /** The room of the run being played (kept to save the run as it goes). */
   private runPick: RoomPick | null = null;
 
+  /** Bumped by every new room: async work started for an older room (GO, reveal) must not touch this one. */
+  private session = 0;
+
   start(mode: PrismjackMode, resumed?: { pick: RoomPick; state: PrismjackState }): void {
+    this.session++;
     this.mode = mode;
     this.screen = 'game';
     if (mode.kind === 'run') {
@@ -185,7 +210,90 @@ export class GameController {
     this.mood = 'calm';
     this.dialog = 'none';
     this.tipsShown = [];
+    this.lessonStep = 0;
+    this.nudged = false;
+    this.coachNote = null;
     this.speech = { kind: 'tip', text: this.introText(mode) };
+  }
+
+  // ---------- the playable tutorial ----------
+
+  /** Step reached in the current lesson (see application/lessons). */
+  lessonStep = $state(0);
+  /** The player did something else than what the lesson asks: say so once. */
+  nudged = $state(false);
+
+  get lesson(): Lesson | null {
+    return this.mode.kind === 'lesson' ? (LESSONS[this.mode.index] ?? null) : null;
+  }
+
+  /** What the current lesson step waits for (null outside the tutorial). */
+  get lessonExpects(): LessonStep | null {
+    return this.lesson?.steps[this.lessonStep] ?? null;
+  }
+
+  /** The coach's line for the current step. */
+  get coachText(): string {
+    if (this.mode.kind !== 'lesson') return '';
+    if (this.prismjack.status === 'success') {
+      return this.mode.index + 1 < LESSON_COUNT ? this.s.lessonWon(this.continueLabel) : this.s.tutorialDone(this.continueLabel);
+    }
+    return this.lessonLines(this.mode.index)[this.lessonStep] ?? '';
+  }
+
+  /** Touch screens draw with a press-and-slide gesture (preview in a loupe): the first lessons say so. */
+  readonly touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+
+  /**
+   * The lesson's lines as shown on this device: on a touch screen, the first two drawing steps also say
+   * how to aim (press and hold: a loupe previews the line, slide, let go).
+   */
+  private lessonLines(index: number): readonly string[] {
+    const lines = this.s.lessons[index] ?? [];
+    if (!this.touch) return lines;
+    const lesson = LESSONS[index];
+    const touchLine = this.s.lessonDrawTouch[index];
+    if (!lesson || !touchLine) return lines;
+    return lines.map((line, i) => (lesson.steps[i]?.kind === 'draw' ? touchLine : line));
+  }
+
+  /** Feedback the coach adds under its line: a wrong plan, a GO with nothing drawn (cleared by the next gesture). */
+  coachNote = $state<string | null>(null);
+
+  /** Every line the current lesson can show, so the card keeps the height of the longest one. */
+  get coachLines(): readonly string[] {
+    if (this.mode.kind !== 'lesson') return [];
+    const won = this.mode.index + 1 < LESSON_COUNT ? this.s.lessonWon(this.continueLabel) : this.s.tutorialDone(this.continueLabel);
+    return [...this.lessonLines(this.mode.index), won];
+  }
+
+  /** The torch the lesson points at, pulsing on the board. */
+  get coachPort(): PortId | null {
+    const e = this.lessonExpects;
+    return e?.kind === 'fire' ? e.port : null;
+  }
+
+  /** Dotted outline of the jewels while the lesson asks to draw them. */
+  get coachGhost(): boolean {
+    return !!this.lesson?.ghost && this.lessonExpects?.kind === 'draw';
+  }
+
+  private advanceLesson(): void {
+    this.lessonStep++;
+    this.nudged = false;
+    // Jewels already drawn before the lesson asked for them: no need to wait.
+    if (this.lessonExpects?.kind === 'draw' && this.recognized.every(Boolean)) this.lessonStep++;
+  }
+
+  /** The tutorial button: the next lesson not done yet, or the first one again once all are done. */
+  startTutorial(): void {
+    const reached = this.progress.lessonReached ?? 0;
+    this.startLesson(reached < LESSON_COUNT ? reached : 0);
+  }
+
+  startLesson(index = 0): void {
+    this.dialog = 'none';
+    this.start({ kind: 'lesson', index });
   }
 
   /** What the thief says when a room opens: the level's lesson, today's heist, the run's progress. */
@@ -193,6 +301,7 @@ export class GameController {
     const s = this.s;
     if (mode.kind === 'level') return s.levelIntro[mode.index] ?? (mode.index === TINY_JEWELS_LEVEL ? s.tinyJewelsIntro : s.levelGeneric(mode.index + 1));
     if (mode.kind === 'daily') return s.dailyIntro;
+    if (mode.kind === 'lesson') return s.lessons[mode.index]?.[0] ?? '';
     return s.runIntro(mode.step + 1);
   }
 
@@ -244,6 +353,7 @@ export class GameController {
     if (m.kind === 'daily') return s.backHome;
     if (m.kind === 'run') return this.won ? s.nextRoom : s.newRun;
     if (!this.won) return s.retry;
+    if (m.kind === 'lesson') return m.index + 1 < LESSON_COUNT ? s.nextLesson : s.firstLevel;
     return m.index + 1 < LEVEL_COUNT ? s.nextLevel : s.backHome;
   });
 
@@ -257,7 +367,10 @@ export class GameController {
     const m = this.mode;
     if (m.kind === 'level' && m.index + 1 < LEVEL_COUNT) this.start({ kind: 'level', index: m.index + 1 });
     else if (m.kind === 'run') this.start({ kind: 'run', step: m.step + 1 });
-    else this.goHome();
+    else if (m.kind === 'lesson') {
+      if (m.index + 1 < LESSON_COUNT) this.start({ kind: 'lesson', index: m.index + 1 });
+      else this.start({ kind: 'level', index: 0 });
+    } else this.goHome();
   }
 
   // ---------- laser tests ----------
@@ -269,11 +382,17 @@ export class GameController {
 
   fire(port: PortId): void {
     if (this.over) return;
+    const expects = this.lessonExpects;
+    if (expects && expects.kind !== 'free' && !(expects.kind === 'fire' && expects.port === port)) {
+      this.nudged = true;
+      return;
+    }
     const known = shotAt(this.prismjack, port);
     const now = Date.now();
     if (!known && now - this.lastFire < DOUBLE_TAP_MS) return;
     const { state, shot, isNew } = fireLaser(this.prismjack, port);
     this.prismjack = state;
+    this.coachNote = null;
     this.selected = shot;
     const number = this.prismjack.shots.indexOf(shot) + 1;
     this.speech = { kind: 'shot', number, shot };
@@ -282,13 +401,16 @@ export class GameController {
     this.flashed = shot;
     this.deps.sound.play('laser');
     this.deps.haptics.tap();
-    const tip = this.tipAfterShot(shot);
+    if (expects?.kind === 'fire') this.advanceLesson();
+    const tip = this.mode.kind === 'lesson' ? null : this.tipAfterShot(shot);
     if (tip) this.speech = { kind: 'shot', number, shot, tip };
     if (this.prismjack.status === 'caught') this.caught();
   }
 
   private tipAfterShot(shot: Shot): string | null {
-    return this.takeTip('first-shot') ?? (shot.exit === shot.entry ? this.takeTip('back') : null) ?? this.takeTip(shot.color ? 'colored' : 'transparent');
+    const straight = shot.exit !== shot.entry && crossesStraight(this.prismjack.puzzle.board, shot.entry, shot.exit);
+    const plain = shot.color ? this.takeTip('colored') : straight ? this.takeTip('transparent') : null;
+    return this.takeTip('first-shot') ?? (shot.exit === shot.entry ? this.takeTip('back') : null) ?? plain;
   }
 
   shotAt(port: PortId): Shot | undefined {
@@ -303,6 +425,7 @@ export class GameController {
     this.history = remember(this.history, before, next);
     this.prismjack = next;
     const found = this.recognized.filter(Boolean).length;
+    this.afterPlanChange();
     if (found > foundBefore) this.tip(found === this.prismjack.jewels.length ? 'all-drawn' : 'jewel-drawn');
   }
 
@@ -335,10 +458,18 @@ export class GameController {
 
   undo(): void {
     ({ history: this.history, state: this.prismjack } = undo(this.history, this.prismjack));
+    this.afterPlanChange();
   }
 
   redo(): void {
     ({ history: this.history, state: this.prismjack } = redo(this.history, this.prismjack));
+    this.afterPlanChange();
+  }
+
+  /** A lesson waiting for the drawing moves on as soon as every jewel is drawn, however it got there. */
+  private afterPlanChange(): void {
+    this.coachNote = null;
+    if (this.lessonExpects?.kind === 'draw' && this.recognized.every(Boolean)) this.advanceLesson();
   }
 
   requestClear(): void {
@@ -358,12 +489,27 @@ export class GameController {
 
   // ---------- the prismjack itself ----------
 
+  /**
+   * After a wrong plan, one torch the plan does not explain, circled in red: a torch already lit if there is one
+   * (the player can compare), otherwise any (a free clue). Gone as soon as the drawing changes.
+   */
+  get hintPort(): PortId | null {
+    const wrong = this.prismjack.mismatches;
+    if (this.over || wrong.length === 0) return null;
+    return wrong.find((p) => shotAt(this.prismjack, p)) ?? wrong[0] ?? null;
+  }
+
   get missing(): number {
     return missingJewels(this.prismjack);
   }
 
   requestSubmit(): void {
     if (this.over || this.dive !== 'none') return;
+    const expects = this.lessonExpects;
+    if (expects && expects.kind !== 'go' && expects.kind !== 'free') {
+      this.nudged = true;
+      return;
+    }
     if (this.prismjack.plan.size > 0 && this.missing > 0) this.dialog = 'confirm-go';
     else void this.submit();
   }
@@ -373,8 +519,11 @@ export class GameController {
     const outcome = submitPlan(this.prismjack);
     if (outcome.kind === 'empty-plan') {
       this.speech = { kind: 'empty-plan' };
+      if (this.mode.kind === 'lesson') this.coachNote = this.s.lessonEmptyPlan;
       return;
     }
+    // The verdict belongs to this room, whatever the player does during the animation.
+    const session = this.session, mode = this.mode;
     // On phones the thief waits out of sight: he first comes down into view and pauses.
     const hidden = typeof matchMedia === 'function' && matchMedia(PHONE_PORTRAIT).matches;
     if (hidden) {
@@ -382,8 +531,12 @@ export class GameController {
       await wait(ENTER_MS + PAUSE_MS);
     }
     // The thief drops through the roof; the verdict falls once he is out of sight.
-    this.dive = 'down';
+    if (session === this.session) this.dive = 'down';
     await wait(hidden ? PHONE_DIVE_MS : DIVE_MS);
+    if (session !== this.session) {
+      this.settleElsewhere(outcome, mode);
+      return;
+    }
     this.prismjack = outcome.state;
     this.mood = outcome.kind === 'success' ? 'happy' : 'sad';
     this.dive = outcome.kind === 'success' ? 'escape' : 'up';
@@ -395,8 +548,15 @@ export class GameController {
     setTimeout(() => (this.mood = 'calm'), MOOD_MS);
   }
 
+  /** The player left the room during GO: its result still counts (a daily heist stays played), on screen nothing changes. */
+  private settleElsewhere(outcome: ReturnType<typeof submitPlan>, mode: PrismjackMode): void {
+    if (outcome.kind === 'success') void recordPrismjack(this.deps.progress, outcome.alarms, mode).then((p) => (this.progress = p));
+    else if (outcome.kind === 'caught') void recordCaught(this.deps.progress, mode).then((p) => (this.progress = p));
+  }
+
   private alarmRang(): void {
     this.speech = { kind: 'alarm', level: this.alarms };
+    if (this.mode.kind === 'lesson') this.coachNote = this.s.lessonWrongPlan(this.alarms);
     this.alarmTick++;
     this.deps.sound.play('alarm');
     this.deps.haptics.failure();
@@ -418,18 +578,24 @@ export class GameController {
     this.result = { alarms: level };
     this.deps.sound.play('success');
     this.deps.haptics.success();
-    this.progress = await recordPrismjack(this.deps.progress, level, this.mode);
-    this.revealAll(() => (this.dialog = 'win'));
+    const session = this.session;
+    const progress = await recordPrismjack(this.deps.progress, level, this.mode);
+    this.progress = progress;
+    if (session !== this.session) return;
+    // A lesson needs no dialog: the coach card says it worked and the toolbar's button goes on.
+    this.revealAll(() => (this.dialog = this.mode.kind === 'lesson' ? 'none' : 'win'));
   }
 
 
   /** Reveals the jewels one by one, then runs `done`. */
   private revealAll(done: () => void): void {
     this.revealed = 0;
+    const session = this.session;
     const step = () => {
+      if (session !== this.session) return;
       this.revealed++;
       if (this.revealed < this.prismjack.jewels.length) setTimeout(step, REVEAL_STEP_MS);
-      else setTimeout(done, REVEAL_STEP_MS * 2);
+      else setTimeout(() => session === this.session && done(), REVEAL_STEP_MS * 2);
     };
     setTimeout(step, REVEAL_STEP_MS);
   }
@@ -488,33 +654,24 @@ export class GameController {
 
   async shareResult(): Promise<void> {
     this.shareOutcome = await this.deps.sharer.share(this.shareText(), this.shareImage?.blob);
-    setTimeout(() => (this.shareOutcome = null), 2500);
+    // A failure stays: the dialog then shows the text to copy by hand.
+    if (this.shareOutcome !== 'failed') setTimeout(() => (this.shareOutcome = null), 2500);
   }
 
   // ---------- settings & tips ----------
 
-  /** Leaving the welcome card also confirms the language shown, so it is not asked again. */
-  /** True while the help is shown as the first-launch tutorial (it then ends on "train" or "play"). */
-  tutorial = $state(false);
-
+  /** Welcome card: "Tutorial" opens the playable lessons, "Play" goes straight to level 1. */
   async closeWelcome(tutorial: boolean): Promise<void> {
     if (this.settings.language === undefined) await this.updateSettings({ language: this.language });
-    this.tutorial = tutorial;
-    this.dialog = tutorial ? 'help' : 'none';
-  }
-
-  /** End of the first-launch tutorial: a training room, or straight to the prismjack already set up. */
-  /** End of the tutorial: straight into level 1, or back to the home menu. */
-  endTutorial(play: boolean): void {
-    this.tutorial = false;
-    if (play) this.startLevel(0);
-    else this.dialog = 'none';
+    if (tutorial) this.startLesson(0);
+    else this.start({ kind: 'level', index: 0 });
   }
 
   async updateSettings(change: Partial<Settings>): Promise<void> {
     const settings = { ...this.settings, ...change };
     this.progress = { ...this.progress, settings };
     this.deps.sound.setEnabled(settings.sound);
+    this.deps.haptics.setEnabled(settings.haptics ?? true);
     this.progress = await saveSettings(this.deps.progress, settings);
   }
 
@@ -522,6 +679,7 @@ export class GameController {
   async resetProgress(): Promise<void> {
     this.progress = await resetProgress(this.deps.progress);
     this.deps.sound.setEnabled(this.settings.sound);
+    this.deps.haptics.setEnabled(true);
     this.tipsShown = [];
     this.screen = 'home';
     // Exactly like a first launch: the welcome card, with the language choice.

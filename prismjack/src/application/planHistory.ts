@@ -25,7 +25,7 @@ export function remember(history: PlanHistory, before: PrismjackState, after: Pr
 }
 
 export function undo(history: PlanHistory, state: PrismjackState): { history: PlanHistory; state: PrismjackState } {
-  const previous = history.past.at(-1);
+  const previous = history.past[history.past.length - 1];
   if (!previous || state.status !== 'planning') return { history, state };
   return {
     history: { past: history.past.slice(0, -1), future: [drawingOf(state), ...history.future] },

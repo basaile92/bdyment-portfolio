@@ -8,7 +8,12 @@
 
   const parts = $derived(speak(game.speech, game.s));
   const t = $derived(game.prismjack.thresholds);
-  const pct = (n: number) => `${Math.min(100, (n / game.limit) * 100)}%`;
+  /**
+   * The mark sits at a fixed spot: the bar up to it holds exactly the quiet tests, so « 4 / 11 » fills 4/11 of it.
+   * Past the mark the red zone fills at once and stays full: it costs one alarm level, once, never more per test.
+   */
+  const MARK = 80;
+  const pct = (n: number) => (n <= t.quiet ? `${(n / Math.max(1, t.quiet)) * MARK}%` : '100%');
 
   /** PC: hovering the thief fades his bubble out quickly; it fades back in when the mouse leaves. */
   let bubbleGone = $state(false);
@@ -54,7 +59,8 @@
       {/key}
     </div>
     <div class="bubble-slot">
-      <p class="bubble" class:gone={bubbleGone} aria-live="polite">
+      <!-- In a lesson the coach card speaks: the bubble would only repeat it. -->
+      <p class="bubble" class:gone={bubbleGone || game.mode.kind === 'lesson'} aria-live={game.mode.kind === 'lesson' ? 'off' : 'polite'}>
         {#each parts as part, i (i)}{#if part.swatch}<span class="swatch" style="background: {part.swatch}"></span>{/if}<span
             class:strong={part.strong} class:good={part.tone === 'good'} class:bad={part.tone === 'bad'}>{part.text}</span>{/each}
       </p>
@@ -64,8 +70,9 @@
     <AlarmLamps level={game.alarms} size={20} label={game.s.alarmLevel(game.alarms)} />
     <div class="gauge" title={game.s.alarmHint}>
       <div class="track">
-        <div class="fill" style="width: {pct(game.tests)}"></div>
-        <div class="mark" style="left: {pct(t.quiet)}">
+        <div class="danger" style="left: {MARK}%"><span>+1</span></div>
+        <div class="fill" class:over={game.tests > t.quiet} style="width: {pct(game.tests)}"></div>
+        <div class="mark" style="left: {MARK}%">
           <!-- Past this mark, the alarm goes up a level. -->
           <svg viewBox="0 0 20 20" width="13" height="13" aria-hidden="true"><path d="M4 15V10a6 6 0 0 1 12 0v5z" fill="#ff3b5c" /><rect x="2" y="15" width="16" height="3" rx="1" fill="#3a3a48" /></svg>
         </div>
@@ -131,7 +138,10 @@
   .alarm { display: flex; align-items: center; gap: 8px; }
   .gauge { flex: 1; display: flex; flex-direction: column; padding-top: 12px; }
   .track { position: relative; height: 10px; border-radius: 5px; background: #0b0f30; overflow: visible; }
-  .fill { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: linear-gradient(90deg, #3ee0a1, var(--gold) 55%, #ff3b5c); background-size: 300px 100%; transition: width 0.3s; }
+  .danger { position: absolute; top: 0; bottom: 0; right: 0; z-index: 1; display: flex; align-items: center; justify-content: center; border-radius: 0 5px 5px 0; background: rgba(255, 59, 92, 0.22); }
+  .danger span { font-size: 8px; line-height: 1; font-weight: 900; color: #fff; opacity: 0.85; }
+  .fill { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: linear-gradient(90deg, #3ee0a1, var(--gold)); transition: width 0.3s, background 0.3s; }
+  .fill.over { background: linear-gradient(90deg, #3ee0a1, var(--gold) 70%, #ff3b5c); }
   .mark { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #fff; }
   .mark svg { position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -1px); }
   .count { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 800; color: var(--muted); white-space: nowrap; }

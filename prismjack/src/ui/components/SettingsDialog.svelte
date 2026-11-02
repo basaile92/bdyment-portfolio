@@ -24,6 +24,10 @@
     <span><strong>{s.sound}</strong><small>{s.soundSub}</small></span>
     <input type="checkbox" checked={game.settings.sound} onchange={(e) => game.updateSettings({ sound: e.currentTarget.checked })} />
   </label>
+  <label class="switch">
+    <span><strong>{s.haptics}</strong><small>{s.hapticsSub}</small></span>
+    <input type="checkbox" checked={game.settings.haptics ?? true} onchange={(e) => game.updateSettings({ haptics: e.currentTarget.checked })} />
+  </label>
   <SymbolsSwitch {game} />
   <div class="reset">
     <span><strong>{s.resetTitle}</strong><small>{armed ? s.resetSure : s.resetSub}</small></span>

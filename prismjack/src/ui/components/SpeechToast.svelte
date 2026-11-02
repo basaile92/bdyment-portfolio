@@ -5,7 +5,8 @@
 
   /**
    * Phones have no room for the thief's bubble: what matters (training tips, alarm, warnings)
-   * floats over the room for a few seconds instead. Plain test results are already in the sensors.
+   * floats over the middle of the grid for a few seconds instead, clear of every torch, so the
+   * first torch can be lit straight away. Plain test results are already in the sensors.
    */
   let { game }: { game: GameController } = $props();
 
@@ -31,6 +32,17 @@
     });
   });
   $effect(() => () => clearTimeout(timer));
+
+  /** Any touch elsewhere (a torch, the drawing) means the message was read: it goes. */
+  $effect(() => {
+    if (!visible) return;
+    const opened = Date.now();
+    const away = () => {
+      if (Date.now() - opened > 400 && !leaving) close();
+    };
+    window.addEventListener('pointerdown', away);
+    return () => window.removeEventListener('pointerdown', away);
+  });
 
   /**
    * Touching the bubble hides it at once, but it stays in place (invisible) until the touch
@@ -61,7 +73,7 @@
 
 <style>
   .toast {
-    position: absolute; z-index: 5; top: 6px; left: 0; right: 0; margin: 0 auto; width: min(92%, 420px);
+    position: absolute; z-index: 5; top: 38%; left: 0; right: 0; margin: 0 auto; width: min(74%, 380px);
     background: #fff; color: #1b1745; border: none; border-radius: 14px; padding: 9px 13px; text-align: left;
     font-size: 14px; line-height: 1.3; font-weight: 800; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
     animation: drop 0.25s ease-out;

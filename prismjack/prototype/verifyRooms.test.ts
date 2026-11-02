@@ -2,6 +2,7 @@ import { it } from 'vitest';
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { allPorts } from '../src/domain/board';
 import { EXPERT_POOL, EXTREME_POOL, HARD_POOL, INSANE_POOL, LEVEL_ROOMS, MEDIUM_POOL, NIGHTMARE_POOL } from '../src/domain/campaignRooms';
+import { DAILY_FIVE, DAILY_FOUR, DAILY_SIX, DAILY_SUNDAY } from '../src/domain/dailyRooms';
 import { storedSpecs, type StoredRoom } from '../src/domain/rooms';
 import { allPlacements } from './diamondSolver';
 import { fireInOrder, Room, solve } from './solver';
@@ -25,7 +26,9 @@ function unique(room: StoredRoom): string {
 
 it.skipIf(process.env.GEN !== 'verify')('every stored room has a single solution', () => {
   writeFileSync('/tmp/verify.log', '');
-  const sets = { LEVEL_ROOMS, MEDIUM_POOL, HARD_POOL, EXPERT_POOL, EXTREME_POOL, INSANE_POOL, NIGHTMARE_POOL };
+  const all = { LEVEL_ROOMS, MEDIUM_POOL, HARD_POOL, EXPERT_POOL, EXTREME_POOL, INSANE_POOL, NIGHTMARE_POOL, DAILY_FOUR, DAILY_FIVE, DAILY_SIX, DAILY_SUNDAY };
+  const only = process.env.SETS?.split(',');
+  const sets = only ? Object.fromEntries(Object.entries(all).filter(([k]) => only.includes(k))) : all;
   for (const [name, rooms] of Object.entries(sets)) {
     const bad = rooms.map((room, i) => [i, unique(room)] as const).filter(([, c]) => c !== '1');
     log(`${name}: ${rooms.length} rooms, not unique: ${JSON.stringify(bad)}`);

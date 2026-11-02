@@ -1,7 +1,7 @@
 # Prismjack
 
-Jeu de déduction : 5 joyaux sont cachés dans une salle de musée. Teste la salle au laser
-depuis les émetteurs, déduis la forme et la place des joyaux, dessine ton plan… et lance le casse.
+Jeu de déduction : des joyaux sont cachés sous la verrière d'un musée. Allume les lampes
+sur les bords, déduis la forme et la place des joyaux, dessine ton plan… et lance le casse.
 
 Une seule base de code pour **le navigateur (PWA)**, **iOS** et **Android** (via Capacitor).
 
@@ -44,7 +44,7 @@ ui  ──►  application  ──►  domain
 | Couche | Dossier | Contenu | Peut dépendre de |
 |---|---|---|---|
 | **Domaine** | `src/domain` | Règles du jeu, pures et sans dépendance : géométrie du plateau, couleurs, formes des joyaux, tracé du laser, génération, validation, score, détection des formes fermées | rien |
-| **Application** | `src/application` | Un cas d'usage par fichier : `startPrismjack`, `fireLaser`, `drawSurface`, `markEmpty`, `clearPlan`, `submitPlan`, `planHistory` (annuler), `modes` (entraînement, jour, libre), `recordPrismjack`. État immuable. | domaine, ports |
+| **Application** | `src/application` | Un cas d'usage par fichier : `startPrismjack`, `fireLaser`, `drawSurface`, `markEmpty`, `clearPlan`, `submitPlan`, `planHistory` (annuler), `modes` (niveaux, casse du jour, La Cavale, leçons), `lessons` (tutoriel jouable), `recordPrismjack`. État immuable. | domaine, ports |
 | **Ports** | `src/ports` | Interfaces vers l'extérieur : `RandomSource`, `ProgressStore`, `Haptics`, `Sound` | domaine |
 | **Adaptateurs** | `src/adapters` | Implémentations : générateur à graine, stockage web / natif, vibrations, sons synthétisés (Web Audio) | ports |
 | **Interface** | `src/ui` | Composants Svelte, `GameController` (view-model), présentateurs (couleurs, géométrie d'affichage, textes) | application, domaine (lecture) |
@@ -64,21 +64,22 @@ un import interdit casse le lint.
 
 ## Modes et confort de jeu
 
-- **Entraînement** 1, 2 puis 3 joyaux au premier lancement, avec des conseils du voleur au bon moment.
-- **Casse du jour** : le même musée pour tout le monde (graine dérivée de la date), série de jours, résultat à copier.
-- **Casse libre** : 5 joyaux au hasard.
-- Tracer : près d'un bord de case = mur, vers le centre = facette ; on peut glisser avant de lâcher. Annuler / Rétablir.
-- Chaque couleur de joyau a aussi une forme (▲ ■ ● ◆) : la couleur n'est jamais le seul indice.
-- Alarme : au-delà du seuil des 2 étoiles, le gardien arrive et le casse échoue.
+- **Tutoriel jouable** : 4 leçons guidées (murs, facettes, couleurs, piliers), reprises là où on s'est arrêté.
+- **Niveaux** : 50 salles (facile, moyen, difficile, extrême, cauchemar), débloquées une à une.
+- **Casse du jour** : le même musée pour tout le monde, une seule tentative, pris dans une liste dédiée et figée
+  (`dailyRooms.ts`, 371 salles) ; plus dur au fil de la semaine, sans répétition pendant un an.
+- **La Cavale** : des salles à la suite, de plus en plus dures, jusqu'à ce que le gardien rattrape le voleur.
+- Tracer : près d'un bord de case = mur, le long d'une diagonale = facette ; on peut glisser avant de lâcher. Annuler / Rétablir.
+- Option : une forme par couleur (▲ ■ ● ◆), y compris sur le prisme.
+- Alarme : un cran au-delà du repère de la jauge, un cran par plan faux ; à 3, le gardien arrive. Après un plan faux, une lampe en désaccord est entourée.
 - Jeu au clavier (flèches, Entrée, h/b/g/d pour les murs, / et \ pour les facettes, v pour vide) et annonces pour lecteurs d'écran.
-- Respecte « réduire les animations » ; polices embarquées (fonctionne hors ligne).
+- Respecte « réduire les animations » ; polices embarquées (fonctionne hors ligne) ; écran « trop petit » sous 320 × 500.
+- Sauvegarde validée et versionnée (`progressCodec.ts`), écrite dans l'ordre (`StoredProgress.ts`) ; écran de secours en cas d'erreur.
 
 ## Règles du jeu (résumé)
 
-- Grille de 8 × 10 cases, 36 émetteurs autour.
-- 5 joyaux (grand triangle bleu, grand triangle blanc, parallélogramme rouge, losange blanc, triangle jaune),
-  orientés au hasard ; ils peuvent se toucher par un point, jamais par un côté.
-- Un **mur** renvoie le laser d'où il vient, une **facette** le dévie à 90°.
-- Le laser prend la couleur des joyaux touchés (ensemble de couleurs : toucher deux fois le même ne change rien).
-- Un plan est accepté s'il donne les mêmes résultats que la salle sur **tous** les émetteurs. Une erreur coûte 2 tests.
-- 3★ en dessous de 60 % des tirs nécessaires pour tout révéler, 2★ en dessous de ce total.
+- Grilles de 5 × 5 à 9 × 9, une lampe au bout de chaque rangée et de chaque colonne.
+- 1 à 7 joyaux, formes et couleurs données par le butin, tournés ou retournés ; jamais collés par un côté plat.
+- Un **côté plat** renvoie la lumière d'où elle vient (↩), une **facette** la fait tourner à angle droit.
+- La lumière prend la couleur de chaque joyau touché ; piliers noir (avale), incolore (renvoie sans couleur), prisme (couleur qui change à chaque test).
+- Un plan est accepté s'il donne les mêmes résultats que la salle sur **toutes** les lampes.

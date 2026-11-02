@@ -12,3 +12,4 @@ export * from './regions';
 export * from './recognition';
 export * from './rooms';
 export * from './campaignRooms';
+export * from './dailyRooms';

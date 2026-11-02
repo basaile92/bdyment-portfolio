@@ -22,6 +22,8 @@ export interface Settings {
   readonly language?: Language;
   /** A shape per jewel colour, for players who tell colours apart poorly. Off unless chosen. */
   readonly symbols?: boolean;
+  /** Vibrations on tests, drawing and alarms (phones). On unless turned off. */
+  readonly haptics?: boolean;
 }
 
 export interface Progress {
@@ -35,6 +37,8 @@ export interface Progress {
   readonly lastDailyWon: string | null;
   /** Last daily prismjack finished, won or caught: the app then opens on a free prismjack. */
   readonly lastDailyPlayed: string | null;
+  /** Lessons of the tutorial finished (the tutorial button resumes at the next one). */
+  readonly lessonReached?: number;
   /** The run in progress, if any (resumed from the home menu). */
   readonly run?: SavedRun | null;
   readonly settings: Settings;

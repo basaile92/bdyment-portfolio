@@ -224,7 +224,7 @@ export function solve(board: BoardSize, pillars: readonly Pillar[], specs: reado
   const consistent = (open: readonly Placement[][]): boolean => {
     maybe.fill(0);
     crossed.fill(0);
-    for (const list of open) for (const q of list) for (const c of q.cellIdx) maybe[c] |= q.color;
+    for (const list of open) for (const q of list) for (const c of q.cellIdx) maybe[c] = (maybe[c] ?? 0) | q.color;
     for (const port of checkOrder) {
       const o = view[port]!;
       const r = trace(room, port, { maybe, allow: o.exit === ABSORBED ? undefined : o.color, states: hasPrism ? null : new Int32Array(0), lit: crossed });

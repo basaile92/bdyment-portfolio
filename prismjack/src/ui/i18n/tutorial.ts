@@ -15,7 +15,7 @@ export const TUTORIAL_FR: readonly TutorialPage[] = [
     id: 'lore',
     title: 'L’histoire',
     body: [
-      'Tu es **Prismjack**, cambrioleur. Sous la verrière dépolie d’une bijouterie, des **joyaux** sont cachés. Tu ne vois rien : tu vas les trouver **grâce à tes lampes torches**.',
+      'Tu es **Prismjack**, cambrioleur. Sous la verrière dépolie d’un musée, des **joyaux** sont cachés. Tu ne vois rien : tu vas les trouver **grâce à tes lampes**.',
     ],
   },
   {
@@ -37,8 +37,8 @@ export const TUTORIAL_FR: readonly TutorialPage[] = [
     id: 'wall',
     title: 'Les murs',
     body: [
-      'Les **bords droits** d’un joyau sont des murs : la lumière **revient à sa propre lampe**, marquée **↩**.',
-      '↩ veut toujours dire **un mur droit**, parfois après un virage.',
+      'Les **côtés plats** d’un joyau sont des murs : la lumière **revient à sa propre lampe**, marquée **↩**.',
+      '↩ veut toujours dire **un côté plat**, parfois après un virage.',
     ],
   },
   {
@@ -46,7 +46,7 @@ export const TUTORIAL_FR: readonly TutorialPage[] = [
     title: 'Les facettes',
     body: [
       'Les **diagonales** sont des facettes : la lumière **tourne à angle droit**. Un seul virage ? La facette est **au croisement** des deux lignes.',
-      'Dans une demi-case, la lumière tourne si elle entre par le **côté ouvert**, et revient (↩) si elle frappe un **côté droit**. Elle peut tourner plusieurs fois avant de ressortir.',
+      'Dans une demi-case, la lumière tourne si elle entre par le **côté ouvert**, et revient (↩) si elle frappe un **côté plat**. Elle peut tourner plusieurs fois avant de ressortir.',
     ],
   },
   {
@@ -62,7 +62,7 @@ export const TUTORIAL_FR: readonly TutorialPage[] = [
     title: 'Dessiner',
     body: [
       '**Tracer** : touche une case **près d’un bord** pour un mur, **vers le centre** pour une facette. **Vide** marque une case sûre, la **gomme** efface.',
-      'Deux joyaux ne collent **jamais un bord droit contre un bord droit** (un coin ou une diagonale, oui) et ne partagent aucune case.',
+      'Deux joyaux ne collent **jamais un côté plat contre un côté plat** (un coin ou une diagonale, oui) et ne partagent aucune case.',
     ],
   },
   {
@@ -95,7 +95,7 @@ export const TUTORIAL_EN: readonly TutorialPage[] = [
     id: 'lore',
     title: 'The story',
     body: [
-      'You are **Prismjack**, a burglar. Under the frosted glass roof of a jeweller’s, **jewels** are hidden. You can’t see a thing: you will find them **with your torches**.',
+      'You are **Prismjack**, a burglar. Under the frosted glass roof of a museum, **jewels** are hidden. You can’t see a thing: you will find them **with your torches**.',
     ],
   },
   {

@@ -45,7 +45,7 @@ export function speak(speech: Speech, s: Strings): SpeechPart[] {
     case 'empty-plan':
       return [{ text: say.emptyPlan, tone: 'bad' }];
     case 'alarm':
-      return [{ text: say.alarm, tone: 'bad' }, { text: s.sentenceGap }, { text: say.alarmUp(speech.level), strong: true }];
+      return [{ text: say.alarm, tone: 'bad' }, { text: s.sentenceGap }, { text: say.alarmUp(speech.level), strong: true }, { text: s.sentenceGap }, { text: say.mismatch }];
     case 'caught':
       return [{ text: say.caught, tone: 'bad' }];
     case 'success':

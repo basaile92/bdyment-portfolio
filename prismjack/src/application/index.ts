@@ -1,5 +1,6 @@
 export * from './PrismjackState';
 export * from './modes';
+export * from './lessons';
 export * from './startPrismjack';
 export * from './fireLaser';
 export * from './drawSurface';

@@ -1,15 +1,20 @@
-import { EXPERT_POOL, EXTREME_POOL, HARD_POOL, INSANE_POOL, LEVEL_ROOMS, MEDIUM_POOL, NIGHTMARE_POOL, ROOM_VARIANTS, type StoredRoom } from '../domain';
+import { LESSONS } from './lessons';
+import {
+  DAILY_FIVE, DAILY_FOUR, DAILY_SIX, DAILY_SUNDAY, EXPERT_POOL, EXTREME_POOL, HARD_POOL, INSANE_POOL, LEVEL_ROOMS, MEDIUM_POOL, NIGHTMARE_POOL,
+  ROOM_VARIANTS, type StoredRoom,
+} from '../domain';
 
 /**
  * The three kinds of game:
  *  - level: the 50 campaign rooms, unlocked one by one (easy, medium, hard, extreme, nightmare: ten each);
- *  - daily: one hard room a day, the same for everybody, a single attempt;
+ *  - daily: one room a day from its own list, the same for everybody, a single attempt, harder as the week goes on;
  *  - run: rooms one after another, from medium to ever harder, until the first failure.
  */
 export type PrismjackMode =
   | { readonly kind: 'level'; readonly index: number }
   | { readonly kind: 'daily'; readonly day: string }
-  | { readonly kind: 'run'; readonly step: number };
+  | { readonly kind: 'run'; readonly step: number }
+  | { readonly kind: 'lesson'; readonly index: number };
 
 export const LEVEL_COUNT = LEVEL_ROOMS.length;
 export type LevelTier = 'easy' | 'medium' | 'hard' | 'extreme' | 'nightmare';
@@ -31,7 +36,7 @@ const RUN_TIERS: readonly (readonly [until: number, pool: readonly StoredRoom[]]
 
 export function runPool(step: number): readonly StoredRoom[] {
   const usable = RUN_TIERS.filter(([, pool]) => pool.length > 0);
-  return (usable.find(([until]) => step < until) ?? usable.at(-1))?.[1] ?? HARD_POOL;
+  return (usable.find(([until]) => step < until) ?? usable[usable.length - 1])?.[1] ?? HARD_POOL;
 }
 
 /** Share of the tests that stay quiet: the usual 60 %, then 2 points less per room after the 15th, down to 30 %. */
@@ -60,7 +65,12 @@ export function roomFor(mode: PrismjackMode, random: number): RoomPick {
     if (!room) throw new Error('No campaign level.');
     return { room, variant: 0 };
   }
-  if (mode.kind === 'daily') return pickIn(HARD_POOL, dailySeed(mode.day));
+  if (mode.kind === 'daily') return dailyPick(mode.day);
+  if (mode.kind === 'lesson') {
+    const lesson = LESSONS[mode.index] ?? LESSONS[0];
+    if (!lesson) throw new Error('No lesson.');
+    return { room: lesson.room, variant: 0 };
+  }
   const pool = runPool(mode.step);
   return pickIn(pool, Math.floor(random * pool.length * ROOM_VARIANTS));
 }
@@ -76,6 +86,42 @@ export function untilNextDay(date: Date): { readonly hours: number; readonly min
   const midnight = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
   const minutes = Math.max(0, Math.ceil((midnight.getTime() - date.getTime()) / 60000));
   return { hours: Math.floor(minutes / 60), minutes: minutes % 60 };
+}
+
+/** Week 0 of the daily heist starts on this Monday. Frozen: moving it would change everybody's heist. */
+const DAILY_EPOCH = Date.UTC(2026, 10, 2);
+const DAY_MS = 86_400_000;
+
+/** Monday first: which list each weekday draws from, and its slot in that list for the week. */
+const DAILY_WEEK: readonly (readonly [list: readonly StoredRoom[], perWeek: number, slot: number])[] = [
+  [DAILY_FOUR, 2, 0], [DAILY_FOUR, 2, 1], [DAILY_FIVE, 2, 0], [DAILY_FIVE, 2, 1], [DAILY_SIX, 2, 0], [DAILY_SIX, 2, 1], [DAILY_SUNDAY, 1, 0],
+];
+
+/** 0 = Monday … 6 = Sunday, for a "YYYY-MM-DD" day (calendar arithmetic, no time zone). */
+export function dailyWeekday(day: string): number {
+  return ((daysSinceEpoch(day) % 7) + 7) % 7;
+}
+
+function daysSinceEpoch(day: string): number {
+  const [y, m, d] = day.split('-').map(Number);
+  return Math.round((Date.UTC(y ?? 2026, (m ?? 1) - 1, d ?? 1) - DAILY_EPOCH) / DAY_MS);
+}
+
+/**
+ * Today's heist: the same for everybody, never the same room twice before its list runs out
+ * (a year for every weekday), then the lists come back mirrored (four years in all).
+ */
+export function dailyPick(day: string): RoomPick {
+  const days = daysSinceEpoch(day);
+  const week = Math.floor(days / 7);
+  const entry = DAILY_WEEK[dailyWeekday(day)];
+  if (!entry) throw new Error('No daily list.');
+  const [list, perWeek, slot] = entry;
+  const n = week * perWeek + slot;
+  const len = list.length;
+  const room = list[((n % len) + len) % len];
+  if (!room) throw new Error('No daily room.');
+  return { room, variant: (((Math.floor(n / len)) % ROOM_VARIANTS) + ROOM_VARIANTS) % ROOM_VARIANTS };
 }
 
 /** Same seed for everybody on the same day: everyone plays the same daily prismjack. */

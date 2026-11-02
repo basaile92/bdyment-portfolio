@@ -54,6 +54,22 @@ export interface Strings {
   /** Space between two sentences of a speech bubble ('' in Japanese and Chinese). */
   readonly sentenceGap: string;
   readonly modeDaily: (dayMonth: string) => string;
+  readonly modeLesson: (lesson: number, total: number) => string;
+  /** The playable tutorial: one line per lesson step (see application/lessons). */
+  readonly lessons: readonly (readonly string[])[];
+  readonly lessonNudge: string;
+  readonly lessonSkip: string;
+  /** Coach line once a lesson's heist succeeded; `next` is the continue button's label. */
+  readonly lessonWon: (next: string) => string;
+  /** Coach line after the last lesson: the rules in one breath, and the button to press. */
+  readonly tutorialDone: (next: string) => string;
+  /** Coach feedback in a lesson: a wrong plan (alarm level reached), a GO with nothing drawn. */
+  readonly lessonWrongPlan: (level: number) => string;
+  readonly lessonEmptyPlan: string;
+  /** Touch screens: the drawing step of lessons 1 and 2, saying how to aim (press and hold, loupe, slide, let go). */
+  readonly lessonDrawTouch: readonly string[];
+  readonly nextLesson: string;
+  readonly firstLevel: string;
   readonly modeLevel: (n: number) => string;
   readonly modeRun: (room: number) => string;
   /** Home menu and level map. */
@@ -91,6 +107,9 @@ export interface Strings {
   readonly dailyIntro: string;
   readonly runIntro: (room: number) => string;
   readonly backHome: string;
+  /** Shown over a room when the window is too small to play. */
+  readonly tooSmallTitle: string;
+  readonly tooSmallText: string;
   readonly nextRoom: string;
   readonly newRun: string;
   readonly nextLevel: string;
@@ -111,6 +130,8 @@ export interface Strings {
     readonly emptyPlan: string;
     readonly alarm: string;
     readonly alarmUp: (level: number) => string;
+    /** After a wrong plan: one torch is circled in red. */
+    readonly mismatch: string;
     readonly caught: string;
     readonly successLead: string;
     readonly successRest: string;
@@ -151,7 +172,6 @@ export interface Strings {
   readonly welcomeText: string;
   readonly welcomeKnow: string;
   readonly welcomeLearn: string;
-  readonly tutorialPlay: string;
   readonly clearTitle: string;
   readonly clearText: string;
   readonly keep: string;
@@ -167,6 +187,14 @@ export interface Strings {
   readonly winVerdict: (level: number) => string;
   readonly streakLine: (streak: number, nextIn: string) => string;
   readonly copied: string;
+  /** Sharing failed: the text is shown to copy by hand. */
+  readonly shareManual: string;
+  /** Unexpected error screen. */
+  readonly crashTitle: string;
+  readonly crashText: string;
+  readonly crashCopy: string;
+  readonly crashReload: string;
+  readonly crashContinue: string;
   readonly seeRoom: string;
   readonly caughtTitle: string;
   readonly caughtText: (daily: boolean) => string;
@@ -192,6 +220,8 @@ export interface Strings {
   readonly symbols: string;
   readonly symbolsSub: string;
   readonly soundSub: string;
+  readonly haptics: string;
+  readonly hapticsSub: string;
   readonly language: string;
   readonly resetTitle: string;
   readonly resetSub: string;

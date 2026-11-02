@@ -20,6 +20,19 @@
   --title-font: 'Bungee', system-ui, sans-serif;
 }
 
+/*
+ * Japanese, Korean and Chinese: Bungee and Nunito have no such glyphs, and the system fallback came out thin.
+ * Heavy system CJK fonts instead, and line breaks between words or phrases, never in the middle of one.
+ */
+:root:lang(ja) { --title-font: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic', system-ui, sans-serif; }
+:root:lang(ko) { --title-font: 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', system-ui, sans-serif; }
+:root:lang(zh-Hant) { --title-font: 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, sans-serif; }
+:root:lang(ja) body, :root:lang(ko) body, :root:lang(zh-Hant) body { font-weight: 700; }
+:root:lang(ja) :is(h1, h2, h3, .btn, button), :root:lang(ko) :is(h1, h2, h3, .btn, button), :root:lang(zh-Hant) :is(h1, h2, h3, .btn, button) { font-weight: 900; }
+:root:lang(ko) { word-break: keep-all; overflow-wrap: anywhere; }
+:root:lang(ja) { word-break: auto-phrase; line-break: strict; }
+:root:lang(zh-Hant) { line-break: strict; }
+
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: var(--bg); }
 body {
