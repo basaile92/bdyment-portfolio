@@ -17,6 +17,10 @@
   const s = $derived(game.s);
   const h = $derived(game.s.home);
   const p = $derived(game.progress);
+  /** Touch screens have no hover: holding a finger on the thief lets out rope, lifting it pulls him back up. */
+  let pressed = $state(false);
+  const press = () => (pressed = true);
+  const release = () => (pressed = false);
 
   const today = new Date().getDate();
   const BEAMS = [JEWEL_HEX.red, JEWEL_HEX.yellow, JEWEL_HEX.blue, JEWEL_HEX.white];
@@ -25,7 +29,10 @@
 <div class="home">
   <AppBanner {game} />
   <header class="hero">
-    <div class="hang" aria-hidden="true">
+    <!-- Decorative: on a phone, pressing the thief lets out rope, like hovering with a mouse. -->
+    <div class="hang" class:pressed aria-hidden="true"
+      onpointerdown={press} onpointerup={release} onpointercancel={release}
+      oncontextmenu={(e) => e.preventDefault()}>
       <div class="pendulum">
         <div class="rope"></div>
         <div class="thief"><Thief mood="calm" size={84} upsideDown /></div>
@@ -107,6 +114,9 @@
   @keyframes sway { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
   .rope { position: absolute; left: 50%; top: -100vh; bottom: 78px; width: 3px; background: repeating-linear-gradient(170deg, #c9a46a 0 4px, #8a6a3a 4px 7px); transform: translateX(-50%); }
   .thief { position: absolute; left: 0; bottom: 0; width: 84px; }
+  .hang { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
+  .hang.pressed { height: 170px; }
+  .hang.pressed .pendulum { height: calc(var(--pivot) + 110px + 56px); }
   @media (hover: hover) {
     .hang:hover { height: 170px; }
     .hang:hover .pendulum { height: calc(var(--pivot) + 110px + 56px); }
