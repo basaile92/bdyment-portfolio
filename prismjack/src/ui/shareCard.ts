@@ -79,7 +79,8 @@ function drawRoom(ctx: CanvasRenderingContext2D, card: ShareCard, area: Area): v
   const px = (x: number, y: number): [number, number] => [ox + x * unit, oy + y * unit];
 
   ctx.fillStyle = 'rgba(10, 14, 50, 0.55)';
-  roundRect(ctx, ox - unit * 0.9, oy - unit * 0.9, unit * (w + 1.8), unit * (h + 1.8), unit * 0.5);
+  ctx.beginPath();
+  ctx.roundRect(ox - unit * 0.9, oy - unit * 0.9, unit * (w + 1.8), unit * (h + 1.8), unit * 0.5);
   ctx.fill();
   ctx.fillStyle = '#283586';
   ctx.fillRect(ox, oy, unit * w, unit * h);
@@ -131,18 +132,18 @@ function drawLamps(ctx: CanvasRenderingContext2D, card: ShareCard, px: (x: numbe
   const ports = 2 * (card.board.width + card.board.height);
   for (let port = 0; port < ports; port++) {
     const [cx, cy] = lampCentre(card.board, port, px);
-    circle(ctx, cx, cy, r, '#a7adc7');
+    circle(ctx, { x: cx, y: cy, r }, '#a7adc7');
     const l = lit.get(port);
     const inner = r * 0.78;
-    if (!l) { circle(ctx, cx, cy, inner, '#2c3152'); continue; }
-    if (l.absorbed) circle(ctx, cx, cy, inner, '#05050a');
+    if (!l) { circle(ctx, { x: cx, y: cy, r: inner }, '#2c3152'); continue; }
+    if (l.absorbed) circle(ctx, { x: cx, y: cy, r: inner }, '#05050a');
     else if (!l.color) {
-      circle(ctx, cx, cy, inner, '#2c3152');
+      circle(ctx, { x: cx, y: cy, r: inner }, '#2c3152');
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = unit * 0.05;
       line(ctx, [cx - inner * 0.55, cy + inner * 0.55], [cx + inner * 0.55, cy - inner * 0.55]);
     } else {
       const slices = colorSlices(l.color, { x: 0, y: 0 }, inner);
-      if (!slices.length) { circle(ctx, cx, cy, inner, laserHex(l.color)); continue; }
+      if (!slices.length) { circle(ctx, { x: cx, y: cy, r: inner }, laserHex(l.color)); continue; }
       ctx.save();
       ctx.translate(cx, cy);
       for (const slice of slices) {
@@ -157,14 +158,14 @@ function drawLamps(ctx: CanvasRenderingContext2D, card: ShareCard, px: (x: numbe
 function drawAlarms(ctx: CanvasRenderingContext2D, level: number, y: number): void {
   for (let i = 0; i < 3; i++) {
     const x = W / 2 + (i - 1) * 74;
-    circle(ctx, x, y, 26, i < level ? '#ff4d6d' : '#2c3152');
+    circle(ctx, { x: x, y: y, r: 26 }, i < level ? '#ff4d6d' : '#2c3152');
     ctx.lineWidth = 4;
     ctx.strokeStyle = i < level ? '#ffb3c0' : '#4a5290';
     ctx.beginPath(); ctx.arc(x, y, 26, 0, Math.PI * 2); ctx.stroke();
   }
 }
 
-function circle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, fill: string): void {
+function circle(ctx: CanvasRenderingContext2D, { x, y, r }: { x: number; y: number; r: number }, fill: string): void {
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fillStyle = fill;
@@ -178,7 +179,3 @@ function line(ctx: CanvasRenderingContext2D, a: [number, number], b: [number, nu
   ctx.stroke();
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, r);
-}

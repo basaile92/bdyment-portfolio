@@ -150,11 +150,14 @@ export class GameController {
   }
 
   goHome(): void {
+    // Leaving the room ends it on screen: a GO still running settles in the background (see submit).
+    this.session++;
     this.screen = 'home';
     this.dialog = 'none';
   }
 
   showLevels(): void {
+    this.session++;
     this.screen = 'levels';
     this.dialog = 'none';
   }
@@ -320,8 +323,20 @@ export class GameController {
       this.start({ kind: 'run', step: 0 });
       return;
     }
-    const restored = restoreRun(saved);
-    this.start({ kind: 'run', step: saved.step }, restored ?? undefined);
+    // A saved run that cannot be replayed (an older or damaged save) is dropped, never a dead end.
+    const restored = this.tryRestore(saved);
+    if (restored === 'broken') {
+      void saveRun(this.deps.progress, null).then((p) => (this.progress = p));
+      this.start({ kind: 'run', step: 0 });
+    } else this.start({ kind: 'run', step: saved.step }, restored ?? undefined);
+  }
+
+  private tryRestore(saved: NonNullable<Progress['run']>): ReturnType<typeof restoreRun> | 'broken' {
+    try {
+      return restoreRun(saved);
+    } catch {
+      return 'broken';
+    }
   }
 
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -381,23 +396,30 @@ export class GameController {
   }
 
   fire(port: PortId): void {
-    if (this.over) return;
+    // No test during GO: the verdict would wipe it, a free look at the room.
+    if (this.over || this.dive !== 'none') return;
     const expects = this.lessonExpects;
-    if (expects && expects.kind !== 'free' && !(expects.kind === 'fire' && expects.port === port)) {
+    if (this.lessonRefuses(expects, port)) {
       this.nudged = true;
       return;
     }
-    const known = shotAt(this.prismjack, port);
-    const now = Date.now();
-    if (!known && now - this.lastFire < DOUBLE_TAP_MS) return;
+    if (!shotAt(this.prismjack, port) && Date.now() - this.lastFire < DOUBLE_TAP_MS) return;
     const { state, shot, isNew } = fireLaser(this.prismjack, port);
     this.prismjack = state;
     this.coachNote = null;
     this.selected = shot;
     const number = this.prismjack.shots.indexOf(shot) + 1;
     this.speech = { kind: 'shot', number, shot };
-    if (!isNew) return;
-    this.lastFire = now;
+    if (isNew) this.afterNewShot(shot, number, expects);
+  }
+
+  /** In a lesson, only the torch the coach points at (outside free play). */
+  private lessonRefuses(expects: LessonStep | null, port: PortId): boolean {
+    return !!expects && expects.kind !== 'free' && !(expects.kind === 'fire' && expects.port === port);
+  }
+
+  private afterNewShot(shot: Shot, number: number, expects: LessonStep | null): void {
+    this.lastFire = Date.now();
     this.flashed = shot;
     this.deps.sound.play('laser');
     this.deps.haptics.tap();
@@ -524,19 +546,26 @@ export class GameController {
     }
     // The verdict belongs to this room, whatever the player does during the animation.
     const session = this.session, mode = this.mode;
-    // On phones the thief waits out of sight: he first comes down into view and pauses.
+    await this.diveOut(session);
+    if (session !== this.session) {
+      this.settleElsewhere(outcome, mode);
+      return;
+    }
+    await this.land(outcome);
+  }
+
+  /** The thief drops through the roof (on phones he first comes into view and pauses); the verdict falls once he is out of sight. */
+  private async diveOut(session: number): Promise<void> {
     const hidden = typeof matchMedia === 'function' && matchMedia(PHONE_PORTRAIT).matches;
     if (hidden) {
       this.dive = 'enter';
       await wait(ENTER_MS + PAUSE_MS);
     }
-    // The thief drops through the roof; the verdict falls once he is out of sight.
     if (session === this.session) this.dive = 'down';
     await wait(hidden ? PHONE_DIVE_MS : DIVE_MS);
-    if (session !== this.session) {
-      this.settleElsewhere(outcome, mode);
-      return;
-    }
+  }
+
+  private async land(outcome: Exclude<ReturnType<typeof submitPlan>, { kind: 'empty-plan' }>): Promise<void> {
     this.prismjack = outcome.state;
     this.mood = outcome.kind === 'success' ? 'happy' : 'sad';
     this.dive = outcome.kind === 'success' ? 'escape' : 'up';

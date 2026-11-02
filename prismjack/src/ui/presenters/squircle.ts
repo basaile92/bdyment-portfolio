@@ -11,7 +11,7 @@ export function squirclePath(width: number, height: number, radius: number): str
   const w = width, h = height;
   const p = (x: number, y: number) => `${round(x)} ${round(y)}`;
   // One corner, expressed from its own origin and mirrored by (sx, sy).
-  const corner = (cx: number, cy: number, sx: number, sy: number, horizontalFirst: boolean) => {
+  const corner = ([cx, cy]: readonly [number, number], [sx, sy]: readonly [number, number], horizontalFirst: boolean) => {
     const pt = (a: number, b: number) => (horizontalFirst ? p(cx + sx * a * r, cy + sy * b * r) : p(cx + sx * b * r, cy + sy * a * r));
     return [
       `C ${pt(1.08849299, 0)} ${pt(0.86840701, 0)} ${pt(0.63149399, 0.074911)}`,
@@ -22,13 +22,13 @@ export function squirclePath(width: number, height: number, radius: number): str
   return [
     `M ${p(K * r, 0)}`,
     `L ${p(w - K * r, 0)}`,
-    corner(w, 0, -1, 1, true),
+    corner([w, 0], [-1, 1], true),
     `L ${p(w, h - K * r)}`,
-    corner(w, h, -1, -1, false),
+    corner([w, h], [-1, -1], false),
     `L ${p(K * r, h)}`,
-    corner(0, h, 1, -1, true),
+    corner([0, h], [1, -1], true),
     `L ${p(0, K * r)}`,
-    corner(0, 0, 1, 1, false),
+    corner([0, 0], [1, 1], false),
     'Z',
   ].join(' ');
 }

@@ -36,6 +36,15 @@ describe('stored progress is never trusted', () => {
   it('forgets a run in an unknown or broken shape instead of blocking the game', () => {
     const broken = { step: 2, room: { stored: { board: 'big' }, variant: 0 }, shots: [], plan: [], empties: [], wrongPlans: 0 };
     expect(sanitizeProgress({ run: broken }).run).toBeNull();
+    const room = { board: { width: 5, height: 5 }, specs: [['square', 'red']], jewels: [[[2, 1, 'full'], [3, 1, 'full'], [2, 2, 'full'], [3, 2, 'full']]] };
+    const run = (r: object, extra: object = {}) => ({ run: { step: 1, room: { stored: room, variant: 0, ...r }, shots: [1], plan: [['h:2,1', 'red']], empties: [], wrongPlans: 0, ...extra } });
+    expect(sanitizeProgress(run({})).run).not.toBeNull();
+    expect(sanitizeProgress(run({ variant: 5 })).run).toBeNull();
+    expect(sanitizeProgress(run({ stored: { ...room, specs: [['star', 'red']] } })).run).toBeNull();
+    expect(sanitizeProgress(run({ stored: { ...room, board: { width: 0, height: 0 } } })).run).toBeNull();
+    expect(sanitizeProgress(run({ stored: { ...room, jewels: [[[9, 1, 'full']]] } })).run).toBeNull();
+    expect(sanitizeProgress(run({ stored: { ...room, pillars: [{ kind: 'gold', shape: 'square1', cells: [] }] } })).run).toBeNull();
+    expect(sanitizeProgress(run({}, { plan: [['zz', 'red']] })).run).toBeNull();
     const between = { step: 3, room: null, shots: [], plan: [], empties: [], wrongPlans: 0 };
     expect(sanitizeProgress({ run: between }).run).toEqual(between);
   });

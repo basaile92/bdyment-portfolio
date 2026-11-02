@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import {
   ABSORBED, colorsIn, jewelSurfaces, LEVEL_ROOMS, mirror, portFor, portSide, rotate, shapeSize,
-  type BoardSize, type CellPart, type PlacedJewel, type PortId, type ShapeCell, type Side,
+  isInside, type BoardSize, type CellPart, type PlacedJewel, type PortId, type ShapeCell, type Side,
 } from '../src/domain';
 import { fireLaser } from '../src/application/fireLaser';
 import { startMode } from '../src/application/startPrismjack';
@@ -30,7 +30,6 @@ interface Saved {
 
 const FILE = process.env.HEIST_STATE ?? 'heist-state.json';
 const GLYPH: Record<CellPart, string> = { full: '█', NW: '◤', NE: '◥', SW: '◣', SE: '◢' };
-const LETTER = { red: 'r', blue: 'b', yellow: 'y', white: 'w' } as const;
 const SIDE_LETTER: Record<Side, string> = { top: 'T', right: 'R', bottom: 'B', left: 'L' };
 const KIND = { black: 'k', clear: 'c', prism: 'p' } as const;
 
@@ -149,59 +148,100 @@ function showRoom(state: PrismjackState, saved: Saved, log: string[]): string {
   return lines.join('\n');
 }
 
+/** A game in progress, rebuilt from the saved file. */
+interface Game {
+  readonly saved: Saved;
+  readonly state: PrismjackState;
+  readonly log: string[];
+  readonly board: BoardSize;
+}
+
+const without = (placed: Saved['placed'], key: string): Saved['placed'] => Object.fromEntries(Object.entries(placed).filter(([k]) => k !== key));
+
+function newGame(rest: string[]): string {
+  const level = Number(rest[0]) - 1;
+  if (!(level >= 0 && level < LEVEL_ROOMS.length)) return `Level must be 1..${LEVEL_ROOMS.length}`;
+  const saved: Saved = { level, variant: Number(rest[1] ?? 0) % 4, fired: [], placed: {}, wrongPlans: 0 };
+  save(saved);
+  return showRoom(build(saved).state, saved, []);
+}
+
+function shapes({ state }: Game): string {
+  return state.jewels
+    .map((j, i) => `jewel ${i + 1} (${j.color} ${j.shape.id}):\n` + orientations(j.shape.cells).map((o, k) => `  orientation ${k + 1}:\n${drawCells(o)}`).join('\n'))
+    .join('\n');
+}
+
+function fire({ saved, state, board }: Game, rest: string[]): string {
+  const port = parseTorch(board, rest[0] ?? '');
+  if (port === undefined) return 'Unknown torch. Use T1..T' + board.width + ', B1..B' + board.width + ', L1..L' + board.height + ', R1..R' + board.height;
+  const r = fireLaser(state, port);
+  if (!r.isNew) return `Torch ${rest[0]} is already lit by an earlier test (no new test): ${describeShot(board, r.shot, 0).replace('#0 ', '')}`;
+  saved.fired.push(port);
+  save(saved);
+  return describeShot(board, r.shot, r.state.shots.length) + `\nTests: ${r.state.shots.length}, alarm ${alarms({ ...r.state, wrongPlans: saved.wrongPlans })}/3`;
+}
+
+/** "place 2 1 3 4" → jewel 2, orientation 1, column 3, row 4 (null when it does not name a real jewel and orientation). */
+function placement({ state }: Game, rest: string[]): { j: number; orient: number; col: number; row: number } | null {
+  const [j = 0, orient = 0, col = 0, row = 0] = rest.map(Number);
+  const spec = state.jewels[j - 1];
+  return spec && orientations(spec.shape.cells)[orient - 1] && col && row ? { j, orient, col, row } : null;
+}
+
+function place(game: Game, rest: string[]): string {
+  const { saved, state, board } = game;
+  const p = placement(game, rest);
+  if (!p) return 'Usage: place <jewel#> <orientation#> <col> <row>';
+  const { j, orient, col, row } = p;
+  saved.placed[String(j)] = { orient, col, row };
+  if (planJewels(state, saved).find((q) => q.id === j)?.cells.some((c) => !isInside(board, c.x, c.y))) {
+    saved.placed = without(saved.placed, String(j));
+    return 'That jewel would stick out of the room.';
+  }
+  save(saved);
+  return showRoom(state, saved, game.log);
+}
+
+function remove(game: Game, rest: string[]): string {
+  game.saved.placed = without(game.saved.placed, rest[0] ?? '');
+  save(game.saved);
+  return showRoom(game.state, game.saved, game.log);
+}
+
+function go({ saved, state, board }: Game): string {
+  const plan = jewelSurfaces(board, planJewels(state, saved));
+  const result = submitPlan({ ...state, plan });
+  if (result.kind === 'empty-plan') return 'Your plan is empty.';
+  if (result.kind === 'success') saved.outcome = `SUCCESS with ${state.shots.length} tests, alarm ${result.alarms}/3`;
+  else saved.wrongPlans += 1;
+  if (result.kind === 'caught') saved.outcome = 'CAUGHT: the alarm reached 3/3, the heist failed.';
+  save(saved);
+  if (saved.outcome) return saved.outcome;
+  const wrong = result.kind === 'alarm' ? result.mismatches.map((p) => torchName(board, p)).join(', ') : '';
+  return `WRONG PLAN: the alarm goes up (${alarms(result.state)}/3). Torches where your plan gives a different result: ${wrong}`;
+}
+
+const COMMANDS: Record<string, (game: Game, rest: string[]) => string> = {
+  room: (g) => showRoom(g.state, g.saved, g.log),
+  shapes,
+  fire,
+  place,
+  remove,
+  go,
+};
+
 function main(args: string[]): string {
   const [cmd = 'room', ...rest] = args;
-  if (cmd === 'new') {
-    const level = Number(rest[0]) - 1;
-    if (!(level >= 0 && level < LEVEL_ROOMS.length)) return `Level must be 1..${LEVEL_ROOMS.length}`;
-    const saved: Saved = { level, variant: Number(rest[1] ?? 0) % 4, fired: [], placed: {}, wrongPlans: 0 };
-    save(saved);
-    return showRoom(build(saved).state, saved, []);
-  }
+  if (cmd === 'new') return newGame(rest);
   if (!existsSync(FILE)) return 'No game: run "new <level>" first.';
   const saved = load();
-  const built = build(saved);
-  let { state } = built;
-  state = { ...state, wrongPlans: saved.wrongPlans };
   if (saved.outcome) return `This heist is over: ${saved.outcome}`;
-  const board = state.puzzle.board;
-  switch (cmd) {
-    case 'room': return showRoom(state, saved, built.log);
-    case 'shapes': return state.jewels.map((j, i) => `jewel ${i + 1} (${j.color} ${j.shape.id}):\n` + orientations(j.shape.cells).map((o, k) => `  orientation ${k + 1}:\n${drawCells(o)}`).join('\n')).join('\n');
-    case 'fire': {
-      const port = parseTorch(board, rest[0] ?? '');
-      if (port === undefined) return 'Unknown torch. Use T1..T' + board.width + ', B1..B' + board.width + ', L1..L' + board.height + ', R1..R' + board.height;
-      const r = fireLaser(state, port);
-      if (!r.isNew) return `Torch ${rest[0]} is already lit by an earlier test (no new test): ${describeShot(board, r.shot, 0).replace('#0 ', '')}`;
-      saved.fired.push(port);
-      save(saved);
-      return describeShot(board, r.shot, r.state.shots.length) + `\nTests: ${r.state.shots.length}, alarm ${alarms({ ...r.state, wrongPlans: saved.wrongPlans })}/3`;
-    }
-    case 'place': {
-      const [j, o, c, rr] = rest.map(Number);
-      const spec = state.jewels[(j ?? 0) - 1];
-      const shape = spec ? orientations(spec.shape.cells)[(o ?? 0) - 1] : undefined;
-      if (!spec || !shape || !c || !rr) return 'Usage: place <jewel#> <orientation#> <col> <row>';
-      saved.placed[String(j)] = { orient: o ?? 1, col: c, row: rr };
-      const placed = planJewels(state, saved).find((p) => p.id === j);
-      if (placed?.cells.some((q) => q.x < 0 || q.y < 0 || q.x >= board.width || q.y >= board.height)) { delete saved.placed[String(j)]; return 'That jewel would stick out of the room.'; }
-      save(saved);
-      return showRoom(state, saved, built.log);
-    }
-    case 'remove': delete saved.placed[rest[0] ?? '']; save(saved); return showRoom(state, saved, built.log);
-    case 'go': {
-      const plan = jewelSurfaces(board, planJewels(state, saved));
-      const result = submitPlan({ ...state, plan });
-      if (result.kind === 'empty-plan') return 'Your plan is empty.';
-      if (result.kind === 'success') { saved.outcome = `SUCCESS with ${state.shots.length} tests, alarm ${result.alarms}/3`; save(saved); return saved.outcome; }
-      saved.wrongPlans += 1;
-      const wrong = result.kind === 'alarm' ? result.mismatches.map((p) => torchName(board, p)).join(', ') : '';
-      if (result.kind === 'caught') { saved.outcome = 'CAUGHT: the alarm reached 3/3, the heist failed.'; save(saved); return saved.outcome; }
-      save(saved);
-      return `WRONG PLAN: the alarm goes up (${alarms(result.state)}/3). Torches where your plan gives a different result: ${wrong}`;
-    }
-    default: return 'Commands: new <level> | room | shapes | fire <torch> | place <jewel#> <orientation#> <col> <row> | remove <jewel#> | go';
-  }
+  const built = build(saved);
+  const state = { ...built.state, wrongPlans: saved.wrongPlans };
+  const command = COMMANDS[cmd];
+  if (!command) return 'Commands: new <level> | room | shapes | fire <torch> | place <jewel#> <orientation#> <col> <row> | remove <jewel#> | go';
+  return command({ saved, state, log: built.log, board: state.puzzle.board }, rest);
 }
 
 console.log(main(process.argv.slice(2)));

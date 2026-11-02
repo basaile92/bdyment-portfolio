@@ -1,3 +1,4 @@
+import { ROOM_VARIANTS, SHAPES } from '../domain';
 import { NO_PROGRESS, type Language, type Progress, type SavedRun, type Settings } from '../ports/ProgressStore';
 
 /**
@@ -15,6 +16,10 @@ const LANGUAGES: readonly Language[] = ['fr', 'en', 'es', 'de', 'it', 'pt', 'ja'
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const COLORS = ['red', 'blue', 'yellow', 'white'];
 const PARTS = ['full', 'NE', 'NW', 'SE', 'SW'];
+const SHAPE_IDS: readonly string[] = Object.keys(SHAPES);
+const PILLAR_KINDS = ['black', 'clear', 'prism'];
+const PILLAR_SHAPES = ['square1', 'square2', 'losange2'];
+const SURFACE_KEY = /^[hvd]:\d{1,2},\d{1,2}$/;
 
 type Raw = Record<string, unknown>;
 
@@ -34,32 +39,47 @@ function settingsOf(v: unknown): Settings {
   };
 }
 
-/** A stored room cell: [x, y, part]. */
-const isCell = (c: unknown): boolean =>
-  Array.isArray(c) && c.length === 3 && count(c[0], 30) !== null && count(c[1], 30) !== null && PARTS.includes(c[2] as string);
+/** A stored room cell [x, y, part], inside a board of that size. */
+const isCellIn = (width: number, height: number) => (c: unknown): boolean =>
+  Array.isArray(c) && c.length === 3 && (count(c[0]) ?? width) < width && (count(c[1]) ?? height) < height && PARTS.includes(c[2] as string);
+
+const isSpec = (s: unknown): boolean => Array.isArray(s) && SHAPE_IDS.includes(s[0] as string) && COLORS.includes(s[1] as string);
+
+function isPillar(p: unknown, inside: (c: unknown) => boolean): boolean {
+  if (!isObject(p) || !PILLAR_KINDS.includes(p.kind as string) || !PILLAR_SHAPES.includes(p.shape as string) || !Array.isArray(p.cells)) return false;
+  const cellsOk = p.cells.every((c) => isObject(c) && inside([c.x, c.y, c.part]));
+  return cellsOk && (p.order === undefined || (Array.isArray(p.order) && p.order.every((o) => COLORS.includes(o as string))));
+}
+
+/** A room as stored in a saved run: known shapes and pillars, every cell on the board. */
+const boardOf = (v: Raw): { width: number; height: number } | null => {
+  const width = isObject(v.board) ? count(v.board.width, 30) : null, height = isObject(v.board) ? count(v.board.height, 30) : null;
+  return width && height ? { width, height } : null;
+};
+
+const sameLength = (a: unknown, b: unknown): a is unknown[] => Array.isArray(a) && Array.isArray(b) && a.length === b.length;
 
 function isStoredRoom(v: unknown): boolean {
-  if (!isObject(v) || !isObject(v.board)) return false;
-  const { width, height } = v.board;
-  if (count(width, 30) === null || count(height, 30) === null) return false;
-  if (!Array.isArray(v.specs) || !Array.isArray(v.jewels) || v.specs.length !== v.jewels.length) return false;
-  const specsOk = v.specs.every((s) => Array.isArray(s) && typeof s[0] === 'string' && COLORS.includes(s[1] as string));
-  const jewelsOk = v.jewels.every((j) => Array.isArray(j) && j.length > 0 && j.every(isCell));
-  return specsOk && jewelsOk && (v.pillars === undefined || Array.isArray(v.pillars));
+  const board = isObject(v) ? boardOf(v) : null;
+  if (!isObject(v) || !board || !sameLength(v.specs, v.jewels)) return false;
+  const inside = isCellIn(board.width, board.height);
+  const jewelsOk = (v.jewels as unknown[]).every((j) => Array.isArray(j) && j.length > 0 && j.every(inside));
+  const pillarsOk = v.pillars === undefined || (Array.isArray(v.pillars) && v.pillars.every((p) => isPillar(p, inside)));
+  return (v.specs as unknown[]).every(isSpec) && jewelsOk && pillarsOk;
 }
+
+const isPlanEntry = (e: unknown): boolean =>
+  Array.isArray(e) && typeof e[0] === 'string' && SURFACE_KEY.test(e[0]) && COLORS.includes(e[1] as string) && (e[2] === undefined || e[2] === '/' || e[2] === '\\');
+
+const isRoomRef = (v: unknown): boolean => isObject(v) && isStoredRoom(v.stored) && (count(v.variant) ?? ROOM_VARIANTS) < ROOM_VARIANTS;
 
 /** A run in progress, or null when anything in it is off (the run is then simply started anew). */
 function runOf(v: unknown): SavedRun | null {
   if (!isObject(v)) return null;
-  const step = count(v.step, 10_000);
-  const wrongPlans = count(v.wrongPlans, 3);
-  const shots = counts(v.shots, 200);
-  const empties = counts(v.empties, 400);
-  const planOk = Array.isArray(v.plan) && v.plan.every((e) => Array.isArray(e) && typeof e[0] === 'string' && COLORS.includes(e[1] as string)
-    && (e[2] === undefined || e[2] === '/' || e[2] === '\\'));
-  const room = v.room === null ? null : isObject(v.room) && isStoredRoom(v.room.stored) && count(v.room.variant, 7) !== null ? v.room : undefined;
-  if (step === null || wrongPlans === null || !shots || !empties || !planOk || room === undefined) return null;
-  return v as unknown as SavedRun;
+  const numbersOk = count(v.step, 10_000) !== null && count(v.wrongPlans, 3) !== null && counts(v.shots, 200) && counts(v.empties, 400);
+  const roomOk = v.room === null || isRoomRef(v.room);
+  const planOk = Array.isArray(v.plan) && v.plan.every(isPlanEntry);
+  return numbersOk && roomOk && planOk ? (v as unknown as SavedRun) : null;
 }
 
 /** Any parsed value → a valid Progress. Older field names (before the Prismjack rename) are understood. */
