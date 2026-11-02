@@ -16,6 +16,12 @@ export interface SavedRun {
   readonly wrongPlans: number;
 }
 
+/** How a heist went: the alarm level reached (0 = perfect) and the tests fired. */
+export interface LevelResult {
+  readonly alarms: number;
+  readonly tests: number;
+}
+
 export interface Settings {
   readonly sound: boolean;
   /** Absent until the player picks one (first launch). */
@@ -31,9 +37,13 @@ export interface Progress {
   readonly perfectPrismjacks: number;
   /** Campaign levels won (indices); the next one after the highest is unlocked. */
   readonly levelsWon: readonly number[];
+  /** Best result per campaign level (key: level index): fewest alarms, then fewest tests. */
+  readonly levelBest?: Readonly<Record<string, LevelResult>>;
   /** Best endless run: rooms cleared before the first failure. */
   readonly runBest: number;
   readonly dailyStreak: number;
+  /** Daily heists won, all days together (shown on the menu's daily card). */
+  readonly dailiesWon?: number;
   readonly lastDailyWon: string | null;
   /** Last daily prismjack finished, won or caught: the app then opens on a free prismjack. */
   readonly lastDailyPlayed: string | null;

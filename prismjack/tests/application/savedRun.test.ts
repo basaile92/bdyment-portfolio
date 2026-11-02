@@ -34,7 +34,7 @@ describe('a run left unfinished', () => {
   it('moves on to the next room after a win, and is forgotten once lost', async () => {
     const store = new MemoryStore();
     await saveRun(store, snapshotRun(4, pick, startRoom(pick)));
-    let p = await recordPrismjack(store, 0, { kind: 'run', step: 4 });
+    let p = await recordPrismjack(store, { alarms: 0, tests: 5 }, { kind: 'run', step: 4 });
     expect(p.run).toMatchObject({ step: 5, room: null });
     expect(p.runBest).toBe(5);
     expect(p.run && restoreRun(p.run)).toBeNull();

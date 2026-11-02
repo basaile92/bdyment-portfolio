@@ -2,12 +2,12 @@ import { renderShareCard, type ShareCard } from './shareCard';
 import type { ShareOutcome, Sharer } from '../ports/Sharer';
 import {
   alarms, eraseAt, startMode, testsLimit, testsUsed, untilNextDay, clearPlan, dayOf, drawSurface, EMPTY_HISTORY, fireLaser, LEVEL_COUNT, markEmpty,
-  LESSON_COUNT, LESSONS, missingJewels, recordCaught, restoreRun, roomFor, runQuietRatio, saveRun, snapshotRun, startRoom, recordPrismjack, resetProgress, redo, remember, saveSettings, shotAt, submitPlan, undo, unlockedLevels,
+  betterResult, LESSON_COUNT, LESSONS, missingJewels, recordCaught, restoreRun, roomFor, runQuietRatio, saveRun, snapshotRun, startRoom, recordPrismjack, resetProgress, redo, remember, saveSettings, shotAt, submitPlan, undo, unlockedLevels,
   type Lesson, type LessonStep, type PrismjackMode, type PrismjackState, type PlanHistory, type RoomPick, type Shot,
 } from '../application';
 import { colorsIn, JEWEL_COLORS, portSide, recognizedJewels, type BoardSize, type JewelColor, type PortId, type Surface, type SurfaceKey } from '../domain';
 import type { Haptics } from '../ports/Haptics';
-import { NO_PROGRESS, type Progress, type ProgressStore, type Settings } from '../ports/ProgressStore';
+import { NO_PROGRESS, type LevelResult, type Progress, type ProgressStore, type Settings } from '../ports/ProgressStore';
 import type { RandomSource } from '../ports/RandomSource';
 import type { Sound } from '../ports/Sound';
 import type { Tool } from './presenters/boardGeometry';
@@ -80,7 +80,8 @@ export class GameController {
   progress = $state.raw<Progress>(NO_PROGRESS);
   selected = $state.raw<Shot | null>(null);
   flashed = $state.raw<Shot | null>(null);
-  result = $state.raw<{ alarms: number } | null>(null);
+  /** The heist just won; for a campaign level, its best result before this one and whether this one beats it. */
+  result = $state.raw<{ alarms: number; best?: LevelResult; record?: boolean } | null>(null);
   tool = $state<Tool>('trace');
   color = $state<JewelColor>('red');
   speech = $state<Speech>({ kind: 'intro' });
@@ -579,8 +580,9 @@ export class GameController {
 
   /** The player left the room during GO: its result still counts (a daily heist stays played), on screen nothing changes. */
   private settleElsewhere(outcome: ReturnType<typeof submitPlan>, mode: PrismjackMode): void {
-    if (outcome.kind === 'success') void recordPrismjack(this.deps.progress, outcome.alarms, mode).then((p) => (this.progress = p));
-    else if (outcome.kind === 'caught') void recordCaught(this.deps.progress, mode).then((p) => (this.progress = p));
+    if (outcome.kind === 'success') {
+      void recordPrismjack(this.deps.progress, { alarms: outcome.alarms, tests: outcome.state.shots.length }, mode).then((p) => (this.progress = p));
+    } else if (outcome.kind === 'caught') void recordCaught(this.deps.progress, mode).then((p) => (this.progress = p));
   }
 
   private alarmRang(): void {
@@ -604,11 +606,13 @@ export class GameController {
   private async success(level: number): Promise<void> {
     this.selected = null;
     this.speech = { kind: 'success' };
-    this.result = { alarms: level };
+    const mine = { alarms: level, tests: this.prismjack.shots.length };
+    const before = this.mode.kind === 'level' ? this.progress.levelBest?.[String(this.mode.index)] : undefined;
+    this.result = { alarms: level, ...(before ? { best: before, record: betterResult(mine, before) } : {}) };
     this.deps.sound.play('success');
     this.deps.haptics.success();
     const session = this.session;
-    const progress = await recordPrismjack(this.deps.progress, level, this.mode);
+    const progress = await recordPrismjack(this.deps.progress, mine, this.mode);
     this.progress = progress;
     if (session !== this.session) return;
     // A lesson needs no dialog: the coach card says it worked and the toolbar's button goes on.

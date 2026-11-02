@@ -30,6 +30,11 @@
   <p class="center">
     <Rich text={s.winText(game.tests, game.result?.alarms ?? 0)} /><br />{s.winVerdict(game.result?.alarms ?? 0)}
   </p>
+  {#if game.result?.record}
+    <p class="center record">{s.newRecord}</p>
+  {:else if game.result?.best}
+    <p class="center"><Rich text={s.levelRecord(game.result.best.alarms, game.result.best.tests)} /></p>
+  {/if}
   {#if game.mode.kind === 'daily'}
     <p class="center daily"><Rich text={s.streakLine(game.progress.dailyStreak, game.nextDailyIn())} /></p>
   {/if}
@@ -57,6 +62,7 @@
 </Modal>
 
 <style>
+  p.center.record { color: var(--gold); font-weight: 900; }
   .manual { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 800; color: var(--muted); }
   .manual textarea { width: 100%; resize: none; border-radius: 10px; border: 2px solid var(--edge); background: #0b0f30; color: #dbe1ff; font: 13px/1.35 ui-monospace, monospace; padding: 8px; user-select: text; -webkit-user-select: text; }
   .daily { font-size: 14px; color: var(--muted); }

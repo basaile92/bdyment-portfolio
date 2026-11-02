@@ -52,10 +52,10 @@ describe('the playable tutorial', () => {
   it('a won lesson counts as no heist, it only remembers how far the tutorial went', async () => {
     let saved: Progress = NO_PROGRESS;
     const store: ProgressStore = { load: async () => saved, save: async (p) => void (saved = p) };
-    await recordPrismjack(store, 0, { kind: 'lesson', index: 1 });
+    await recordPrismjack(store, { alarms: 0, tests: 5 }, { kind: 'lesson', index: 1 });
     expect(saved.prismjacksWon).toBe(0);
     expect(saved.lessonReached).toBe(2);
-    await recordPrismjack(store, 0, { kind: 'lesson', index: 0 });
+    await recordPrismjack(store, { alarms: 0, tests: 5 }, { kind: 'lesson', index: 0 });
     expect(saved.lessonReached).toBe(2);
   });
 });

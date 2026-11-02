@@ -1,6 +1,7 @@
 <script lang="ts">
   import { LEVEL_COUNT, levelTier } from '../../application';
   import type { GameController } from '../GameController.svelte';
+  import AlarmLamps from './AlarmLamps.svelte';
   import UiIcon from './icons/UiIcon.svelte';
 
   /** The level map: 50 levels in five groups of ten, unlocked one by one, a green tick once cleared. */
@@ -29,10 +30,18 @@
       <div class="grid">
         {#each levels.filter((i) => levelTier(i) === t.tier) as i (i)}
           {@const st = state(i)}
-          <button class="tile {st} {t.tier}" disabled={st === 'locked'} aria-label={h.levelLabel(i + 1, st)} title={st === 'locked' ? h.locked : ''}
+          {@const best = game.progress.levelBest?.[String(i)]}
+          <button class="tile {st} {t.tier}" disabled={st === 'locked'} aria-label={h.levelLabel(i + 1, st) + (best ? `, ${h.levelBest(best.alarms, best.tests)}` : '')} title={st === 'locked' ? h.locked : ''}
             onclick={() => game.startLevel(i)}>
             {i + 1}
             {#if st === 'won'}<span class="tick"><UiIcon name="check" size={12} /></span>{/if}
+            {#if best}
+              <!-- Best result: the alarm lamps it took (none lit = perfect) and the tests fired. -->
+              <span class="best" aria-hidden="true">
+                <AlarmLamps level={best.alarms} size={9} label="" />
+                <span class="tests"><svg viewBox="0 0 20 20" width="9" height="9"><circle cx="10" cy="10" r="9" fill="#a7adc7" /><circle cx="10" cy="10" r="6" fill="#2c3152" /></svg>{best.tests}</span>
+              </span>
+            {/if}
             {#if st === 'locked'}<span class="lock" aria-hidden="true">🔒</span>{/if}
           </button>
         {/each}
@@ -78,6 +87,9 @@
     display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--bg);
   }
   .lock { position: absolute; right: 4px; bottom: 2px; font-size: 11px; }
+  .tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .best { display: flex; align-items: center; gap: 4px; font-family: 'Nunito', sans-serif; font-size: 10px; font-weight: 900; color: #d8ffe9; line-height: 1; }
+  .tests { display: inline-flex; align-items: center; gap: 2px; }
   section { padding: 14px; border-radius: 22px; background: rgba(10, 14, 50, 0.35); border: 1px solid rgba(140, 180, 255, 0.12); }
   @media (min-width: 900px) {
     .levels { justify-content: center; padding: 32px; }

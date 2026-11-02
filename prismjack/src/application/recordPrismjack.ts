@@ -1,5 +1,15 @@
-import { NO_PROGRESS, type Progress, type ProgressStore, type Settings } from '../ports/ProgressStore';
+import { NO_PROGRESS, type LevelResult, type Progress, type ProgressStore, type Settings } from '../ports/ProgressStore';
 import { previousDay, type PrismjackMode } from './modes';
+
+/** True when `a` beats `b`: fewer alarms, or as many alarms with fewer tests. */
+export function betterResult(a: LevelResult, b: LevelResult | undefined): boolean {
+  return !b || a.alarms < b.alarms || (a.alarms === b.alarms && a.tests < b.tests);
+}
+
+function withBest(p: Progress, index: number, result: LevelResult): Progress {
+  const key = String(index);
+  return betterResult(result, p.levelBest?.[key]) ? { ...p, levelBest: { ...p.levelBest, [key]: result } } : p;
+}
 
 function afterWin(p: Progress, mode: PrismjackMode): Progress {
   if (mode.kind === 'lesson') return p;
@@ -11,13 +21,14 @@ function afterWin(p: Progress, mode: PrismjackMode): Progress {
   // A day already won, or an older one (after flying west), changes nothing.
   if (mode.kind !== 'daily' || (p.lastDailyWon ?? '') >= mode.day) return p;
   const streak = p.lastDailyWon === previousDay(mode.day) ? p.dailyStreak + 1 : 1;
-  return { ...p, dailyStreak: streak, lastDailyWon: mode.day };
+  return { ...p, dailyStreak: streak, lastDailyWon: mode.day, dailiesWon: (p.dailiesWon ?? 0) + 1 };
 }
 
 const played = (p: Progress, mode: PrismjackMode): Progress => (mode.kind === 'daily' ? { ...p, lastDailyPlayed: mode.day } : p);
 
-/** A won prismjack; `alarms` = alarm level reached (0 = perfect). */
-export async function recordPrismjack(store: ProgressStore, alarms: number, mode: PrismjackMode): Promise<Progress> {
+/** A won prismjack: the alarm level reached (0 = perfect) and the tests fired. A campaign level keeps its best result. */
+export async function recordPrismjack(store: ProgressStore, result: LevelResult, mode: PrismjackMode): Promise<Progress> {
+  const { alarms } = result;
   const p = await store.load();
   // A tutorial lesson is practice: it counts as no heist, it only remembers how far the tutorial went.
   if (mode.kind === 'lesson') {
@@ -27,7 +38,8 @@ export async function recordPrismjack(store: ProgressStore, alarms: number, mode
     return next;
   }
   const counted: Progress = { ...p, prismjacksWon: p.prismjacksWon + 1, perfectPrismjacks: p.perfectPrismjacks + (alarms === 0 ? 1 : 0) };
-  const next = played(afterWin(counted, mode), mode);
+  const won = afterWin(counted, mode);
+  const next = played(mode.kind === 'level' ? withBest(won, mode.index, result) : won, mode);
   await store.save(next);
   return next;
 }

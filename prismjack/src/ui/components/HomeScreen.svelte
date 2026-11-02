@@ -68,7 +68,12 @@
       <span class="text">
         <strong>{h.daily}</strong>
         <small>{game.dailyDone ? h.dailyDone(game.nextDailyIn()) : h.dailyOpen}</small>
-        {#if p.dailyStreak > 0}<span class="chip">🔥 {h.streak(p.dailyStreak)}</span>{/if}
+        {#if (p.dailiesWon ?? 0) > 0 || p.dailyStreak > 0}
+          <span class="chips">
+            {#if (p.dailiesWon ?? 0) > 0}<span class="chip">🏆 {h.dailiesWon(p.dailiesWon ?? 0)}</span>{/if}
+            {#if p.dailyStreak > 0}<span class="chip">🔥 {h.streak(p.dailyStreak)}</span>{/if}
+          </span>
+        {/if}
       </span>
       <span class="go" aria-hidden="true">›</span>
     </button>
@@ -90,6 +95,7 @@
 </div>
 
 <style>
+  .chips { display: flex; flex-wrap: wrap; gap: 4px 6px; }
   .home {
     position: fixed; inset: 0; z-index: 30; overflow-y: auto; overflow-x: hidden;
     background: radial-gradient(ellipse at 50% 0%, #26327f 0%, var(--bg) 60%);

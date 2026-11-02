@@ -76,17 +76,21 @@ describe('modes', () => {
 describe('progress', () => {
   it('counts a daily streak on consecutive days only', async () => {
     const store = new MemoryStore();
-    await recordPrismjack(store, 3, { kind: 'daily', day: '2026-10-30' });
-    await recordPrismjack(store, 2, { kind: 'daily', day: '2026-10-31' });
+    await recordPrismjack(store, { alarms: 3, tests: 5 }, { kind: 'daily', day: '2026-10-30' });
+    await recordPrismjack(store, { alarms: 2, tests: 5 }, { kind: 'daily', day: '2026-10-31' });
     expect(store.value.dailyStreak).toBe(2);
-    await recordPrismjack(store, 2, { kind: 'daily', day: '2026-11-02' });
+    await recordPrismjack(store, { alarms: 2, tests: 5 }, { kind: 'daily', day: '2026-11-02' });
     expect(store.value.dailyStreak).toBe(1);
     expect(store.value.prismjacksWon).toBe(3);
+    expect(store.value.dailiesWon).toBe(3);
+    // The same day again (or an older one after flying west) counts nothing.
+    await recordPrismjack(store, { alarms: 0, tests: 5 }, { kind: 'daily', day: '2026-11-02' });
+    expect(store.value.dailiesWon).toBe(3);
   });
 
   it('resets everything, settings included, as on a first launch', async () => {
     const store = new MemoryStore();
-    await recordPrismjack(store, 0, { kind: 'daily', day: '2026-10-31' });
+    await recordPrismjack(store, { alarms: 0, tests: 5 }, { kind: 'daily', day: '2026-10-31' });
     store.value = { ...store.value, settings: { sound: false, language: 'en', symbols: true } };
     const p = await resetProgress(store);
     expect(p.prismjacksWon).toBe(0);
@@ -106,8 +110,15 @@ describe('progress', () => {
   it('unlocks levels one by one and remembers the best run', async () => {
     const store = new MemoryStore();
     expect(unlockedLevels(store.value, LEVEL_COUNT)).toBe(1);
-    await recordPrismjack(store, 1, { kind: 'level', index: 0 });
+    await recordPrismjack(store, { alarms: 1, tests: 5 }, { kind: 'level', index: 0 });
     expect(store.value.levelsWon).toEqual([0]);
+    expect(store.value.levelBest?.['0']).toEqual({ alarms: 1, tests: 5 });
+    await recordPrismjack(store, { alarms: 1, tests: 9 }, { kind: 'level', index: 0 });
+    expect(store.value.levelBest?.['0']).toEqual({ alarms: 1, tests: 5 });
+    await recordPrismjack(store, { alarms: 0, tests: 12 }, { kind: 'level', index: 0 });
+    expect(store.value.levelBest?.['0']).toEqual({ alarms: 0, tests: 12 });
+    await recordPrismjack(store, { alarms: 0, tests: 7 }, { kind: 'level', index: 0 });
+    expect(store.value.levelBest?.['0']).toEqual({ alarms: 0, tests: 7 });
     expect(unlockedLevels(store.value, LEVEL_COUNT)).toBe(2);
     await recordCaught(store, { kind: 'run', step: 4 });
     expect(store.value.runBest).toBe(4);

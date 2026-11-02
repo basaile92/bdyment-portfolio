@@ -84,6 +84,8 @@ export interface Strings {
     readonly dailyOpen: string;
     readonly dailyDone: (next: string) => string;
     readonly streak: (n: number) => string;
+    /** Daily heists won in all (menu card). */
+    readonly dailiesWon: (n: number) => string;
     readonly run: string;
     readonly runResume: (room: number) => string;
     readonly runSub: (best: number) => string;
@@ -97,6 +99,8 @@ export interface Strings {
     readonly nightmare: string;
     readonly locked: string;
     readonly levelLabel: (n: number, state: 'won' | 'open' | 'locked') => string;
+    /** Best result of a level (screen readers): alarm level reached and tests fired. */
+    readonly levelBest: (alarms: number, tests: number) => string;
   };
   readonly runOver: (rooms: number, best: number) => string;
   /** What each of the first levels teaches, said by the thief when it opens. */
@@ -185,6 +189,9 @@ export interface Strings {
   readonly winAlarmLabel: (level: number) => string;
   readonly winText: (tests: number, level: number) => string;
   readonly winVerdict: (level: number) => string;
+  /** Campaign level won again: beaten or not, the best result so far. */
+  readonly newRecord: string;
+  readonly levelRecord: (alarms: number, tests: number) => string;
   readonly streakLine: (streak: number, nextIn: string) => string;
   readonly copied: string;
   /** Sharing failed: the text is shown to copy by hand. */

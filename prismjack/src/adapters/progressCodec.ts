@@ -1,5 +1,5 @@
 import { ROOM_VARIANTS, SHAPES } from '../domain';
-import { NO_PROGRESS, type Language, type Progress, type SavedRun, type Settings } from '../ports/ProgressStore';
+import { NO_PROGRESS, type Language, type LevelResult, type Progress, type SavedRun, type Settings } from '../ports/ProgressStore';
 
 /**
  * How progress is written to storage, and read back without ever trusting it.
@@ -82,6 +82,13 @@ function runOf(v: unknown): SavedRun | null {
   return numbersOk && roomOk && planOk ? (v as unknown as SavedRun) : null;
 }
 
+/** Best results per level: only well-formed entries are kept. */
+function bestOf(v: unknown): Record<string, LevelResult> {
+  if (!isObject(v)) return {};
+  const ok = Object.entries(v).filter(([k, r]) => count(Number(k), 999) !== null && isObject(r) && count(r.alarms, 2) !== null && count(r.tests, 500) !== null);
+  return Object.fromEntries(ok.map(([k, r]) => [k, { alarms: (r as Raw).alarms as number, tests: (r as Raw).tests as number }]));
+}
+
 /** Any parsed value → a valid Progress. Older field names (before the Prismjack rename) are understood. */
 export function sanitizeProgress(v: unknown): Progress {
   if (!isObject(v)) return NO_PROGRESS;
@@ -91,8 +98,10 @@ export function sanitizeProgress(v: unknown): Progress {
     prismjacksWon: n('prismjacksWon', 'heistsWon'),
     perfectPrismjacks: n('perfectPrismjacks', 'perfectHeists'),
     levelsWon: levelsWon ? [...new Set(levelsWon)] : [],
+    levelBest: bestOf(v.levelBest),
     runBest: n('runBest', undefined, 10_000),
     dailyStreak: n('dailyStreak', undefined, 100_000),
+    dailiesWon: n('dailiesWon', undefined, 100_000),
     lastDailyWon: day(v.lastDailyWon),
     lastDailyPlayed: day(v.lastDailyPlayed),
     lessonReached: count(v.lessonReached, 20) ?? 0,

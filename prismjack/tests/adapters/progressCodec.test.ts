@@ -52,7 +52,8 @@ describe('stored progress is never trusted', () => {
   it('round-trips with a schema version', () => {
     const p = { ...NO_PROGRESS, levelsWon: [0, 1], runBest: 4 };
     expect(JSON.parse(encodeProgress(p)).schemaVersion).toBe(2);
-    expect(decodeProgress(encodeProgress(p))).toEqual({ ...p, run: null, lessonReached: 0 });
+    expect(decodeProgress(encodeProgress(p))).toEqual({ ...p, run: null, lessonReached: 0, levelBest: {}, dailiesWon: 0 });
+    expect(sanitizeProgress({ levelBest: { 0: { alarms: 1, tests: 6 }, x: { alarms: 0, tests: 1 }, 3: { alarms: 9, tests: 2 } } }).levelBest).toEqual({ 0: { alarms: 1, tests: 6 } });
     expect(decodeProgress('{not json')).toBeNull();
     expect(decodeProgress(null)).toBe(NO_PROGRESS);
   });
