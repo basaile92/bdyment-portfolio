@@ -74,6 +74,7 @@ export const en: Strings = {
     run: 'On the Run',
     runResume: (n) => `Resume · room ${n}`,
     runSub: (best) => (best > 0 ? `Until the guard catches you · best ${best}` : 'Museum after museum, until the guard catches you'),
+    runBestChip: (n) => `Best: ${n} ${s(n, 'room', 'rooms')} in a row`,
     tutorial: 'Tutorial',
     tutorialSub: 'Four playable lessons, every rule',
     settings: 'Settings',

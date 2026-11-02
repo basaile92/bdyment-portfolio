@@ -4,7 +4,10 @@
   import AlarmLamps from './AlarmLamps.svelte';
   import UiIcon from './icons/UiIcon.svelte';
 
-  /** The level map: 50 levels in five groups of ten, unlocked one by one, a green tick once cleared. */
+  /**
+   * The level map: 50 levels in five groups of ten, unlocked one by one. A level cleared without any alarm is green
+   * with a tick; cleared with the alarm ringing, amber with a red badge (alarm levels). Below: the best run's lamps and tests.
+   */
   let { game }: { game: GameController } = $props();
   const h = $derived(game.s.home);
   const tiers = $derived([
@@ -31,14 +34,17 @@
         {#each levels.filter((i) => levelTier(i) === t.tier) as i (i)}
           {@const st = state(i)}
           {@const best = game.progress.levelBest?.[String(i)]}
-          <button class="tile {st} {t.tier}" disabled={st === 'locked'} aria-label={h.levelLabel(i + 1, st) + (best ? `, ${h.levelBest(best.alarms, best.tests)}` : '')} title={st === 'locked' ? h.locked : ''}
+          <button class="tile {st} {t.tier}" class:alarmed={!!best && best.alarms > 0} disabled={st === 'locked'} aria-label={h.levelLabel(i + 1, st) + (best ? `, ${h.levelBest(best.alarms, best.tests)}` : '')} title={st === 'locked' ? h.locked : ''}
             onclick={() => game.startLevel(i)}>
             {i + 1}
-            {#if st === 'won'}<span class="tick"><UiIcon name="check" size={12} /></span>{/if}
+            {#if st === 'won' && best && best.alarms > 0}
+              <!-- Won, but the alarm rang: a red badge with the number of alarm levels it took. -->
+              <span class="tick alarm"><svg viewBox="0 0 20 20" width="11" height="11" aria-hidden="true"><path d="M4 15V10a6 6 0 0 1 12 0v5z" fill="#fff" /><rect x="2" y="15" width="16" height="3" rx="1" fill="#fff" /></svg>{best.alarms}</span>
+            {:else if st === 'won'}<span class="tick"><UiIcon name="check" size={12} /></span>{/if}
             {#if best}
               <!-- Best result: the alarm lamps it took (none lit = perfect) and the tests fired. -->
               <span class="best" aria-hidden="true">
-                <AlarmLamps level={best.alarms} size={9} label="" />
+                <AlarmLamps level={best.alarms} size={11} label="" />
                 <span class="tests"><svg viewBox="0 0 20 20" width="9" height="9"><circle cx="10" cy="10" r="9" fill="#a7adc7" /><circle cx="10" cy="10" r="6" fill="#2c3152" /></svg>{best.tests}</span>
               </span>
             {/if}
@@ -88,6 +94,9 @@
   }
   .lock { position: absolute; right: 4px; bottom: 2px; font-size: 11px; }
   .tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  /* Won with the alarm ringing: amber instead of green, so a perfect run stands out. */
+  .tile.won.alarmed { background: linear-gradient(135deg, #7a4f16, #4a2f0d); border-color: #ffb347; }
+  .tick.alarm { width: auto; min-width: 22px; padding: 0 5px; gap: 1px; background: #ff3b5c; color: #fff; font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 900; }
   .best { display: flex; align-items: center; gap: 4px; font-family: 'Nunito', sans-serif; font-size: 10px; font-weight: 900; color: #d8ffe9; line-height: 1; }
   .tests { display: inline-flex; align-items: center; gap: 2px; }
   section { padding: 14px; border-radius: 22px; background: rgba(10, 14, 50, 0.35); border: 1px solid rgba(140, 180, 255, 0.12); }

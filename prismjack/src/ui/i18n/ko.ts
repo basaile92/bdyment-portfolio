@@ -164,6 +164,7 @@ export const ko: Strings = {
     run: '도주극',
     runResume: (n) => `이어하기 · ${n}번째 방`,
     runSub: (best) => (best > 0 ? `경비원에게 잡힐 때까지 · 최고 기록 방 ${best}개` : '경비원에게 잡힐 때까지 이어지는 도주'),
+    runBestChip: (n) => `최고 기록: 연속 ${n}개 방`,
     tutorial: '튜토리얼',
     tutorialSub: '직접 해 보는 레슨 4개, 모든 규칙',
     settings: '설정',

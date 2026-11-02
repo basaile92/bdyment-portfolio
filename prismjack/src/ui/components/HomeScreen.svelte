@@ -82,7 +82,9 @@
       <span class="badge"><span class="bars"><i></i><i></i><i></i></span></span>
       <span class="text">
         <strong>{h.run}</strong>
-        <small>{p.run ? h.runResume(p.run.step + 1) : h.runSub(p.runBest)}</small>
+        <small>{p.run ? h.runResume(p.run.step + 1) : h.runSub(0)}</small>
+        <!-- The longest run so far, always shown (even while a run is in progress). -->
+        {#if p.runBest > 0}<span class="chips"><span class="chip">🏆 {h.runBestChip(p.runBest)}</span></span>{/if}
       </span>
       <span class="go" aria-hidden="true">›</span>
     </button>

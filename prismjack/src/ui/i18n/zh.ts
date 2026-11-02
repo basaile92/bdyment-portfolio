@@ -159,6 +159,7 @@ export const zh: Strings = {
     run: '亡命天涯',
     runResume: (n) => `繼續 · 第 ${n} 間`,
     runSub: (best) => (best > 0 ? `直到被警衛抓到 · 最佳紀錄 ${best} 間` : '一間接一間，直到被警衛抓到'),
+    runBestChip: (n) => `最佳紀錄：連續 ${n} 間`,
     tutorial: '教學',
     tutorialSub: '四堂可玩的課程，涵蓋所有規則',
     settings: '設定',

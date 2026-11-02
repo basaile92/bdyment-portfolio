@@ -89,6 +89,8 @@ export interface Strings {
     readonly run: string;
     readonly runResume: (room: number) => string;
     readonly runSub: (best: number) => string;
+    /** Longest run so far, in rooms cleared in a row (menu card). */
+    readonly runBestChip: (rooms: number) => string;
     readonly tutorial: string;
     readonly tutorialSub: string;
     readonly settings: string;

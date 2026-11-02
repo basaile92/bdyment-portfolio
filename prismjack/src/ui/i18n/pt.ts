@@ -154,6 +154,7 @@ export const pt: Strings = {
     run: 'Em fuga',
     runResume: (n) => `Continuar · sala ${n}`,
     runSub: (best) => (best > 0 ? `Até o vigia te pegar · recorde ${best}` : 'Museu após museu, até o vigia te pegar'),
+    runBestChip: (n) => `Recorde: ${n} ${s(n, 'sala', 'salas')} seguidas`,
     tutorial: 'Tutorial',
     tutorialSub: 'Quatro lições para jogar, todas as regras',
     settings: 'Ajustes',

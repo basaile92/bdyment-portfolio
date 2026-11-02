@@ -159,6 +159,7 @@ export const ja: Strings = {
     run: '逃走劇',
     runResume: (n) => `再開 · ${n}部屋目`,
     runSub: (best) => (best > 0 ? `警備員に捕まるまで · 最高${best}部屋` : '美術館から美術館へ。警備員に捕まるまで続く'),
+    runBestChip: (n) => `最高記録：${n}部屋連続`,
     tutorial: 'チュートリアル',
     tutorialSub: '遊べるレッスン4つで、すべてのルールを',
     settings: '設定',

@@ -156,6 +156,7 @@ export const de: Strings = {
     run: 'Auf der Flucht',
     runResume: (n) => `Fortsetzen · Raum ${n}`,
     runSub: (best) => (best > 0 ? `Bis der Wächter dich schnappt · Rekord ${best}` : 'Museum für Museum, bis der Wächter dich schnappt'),
+    runBestChip: (n) => `Rekord: ${n} ${s(n, 'Raum', 'Räume')} am Stück`,
     tutorial: 'Tutorial',
     tutorialSub: 'Vier Lektionen zum Spielen, alle Regeln',
     settings: 'Einstellungen',

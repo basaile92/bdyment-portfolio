@@ -74,6 +74,7 @@ export const fr: Strings = {
     run: 'La Cavale',
     runResume: (n) => `Reprendre · salle ${n}`,
     runSub: (best) => (best > 0 ? `Jusqu’à ce que le gardien te rattrape · record ${best}` : 'Des musées à la suite, jusqu’à ce que le gardien te rattrape'),
+    runBestChip: (n) => `Record : ${n} ${s(n, 'salle', 'salles')} d’affilée`,
     tutorial: 'Tutoriel',
     tutorialSub: 'Quatre leçons à jouer, toutes les règles',
     settings: 'Réglages',
