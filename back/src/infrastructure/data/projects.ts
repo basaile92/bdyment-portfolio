@@ -1,10 +1,10 @@
 export const projects = [
   {
-    name: 'Prismjack',
-    websites: ['https://bdyment.com/prismjack/'],
+    name: 'Lumijack',
+    websites: ['https://lumijack.com/'],
     role: 'Game designer and developer',
     description:
-      'Independent design and development of Prismjack, a solo laser deduction game for mobile and browser, playable on this site with the prismjack command. Five jewels are hidden in a museum room: the player fires lasers from the walls, reads how they bounce and change colour, then draws the jewels edge by edge.\n- Front-end in TypeScript and Svelte 5 built with Vite, the room drawn in SVG, sounds synthesised with the Web Audio API, installable as a PWA and packaged for iOS and Android with Capacitor. \n- Clean Architecture (domain, use cases, ports, adapters, UI) with the dependency rule enforced by ESLint, unit tests with Vitest and end-to-end checks with Playwright. \n- Daily heist identical for every player without a back-end (seeded generation), training rooms, star scoring, French and English. \n- Vibe-coded with Claude (Anthropic): I directed the game design, the rules and every UI/UX decision in conversation, while Claude and Claude Code agents wrote the code, ran the UI/UX audits and handled the architecture. \n- Deployed on AWS S3 and Cloudfront with AWS CDK and Github Actions, alongside this portfolio.',
+      'Independent design and development of Lumijack, a solo light deduction game for mobile and browser, playable at lumijack.com or with the lumijack command. Jewels are hidden in a museum room: the player lights torches around it, reads how the beams bounce and change colour, then draws the jewels edge by edge.\n- Front-end in TypeScript and Svelte 5 built with Vite, the room drawn in SVG, sounds synthesised with the Web Audio API, installable as a PWA and packaged for iOS and Android with Capacitor. \n- Clean Architecture (domain, use cases, ports, adapters, UI) with the dependency rule enforced by ESLint, unit tests with Vitest and end-to-end checks with Playwright. \n- 50 levels, a daily heist identical for every player without a back-end, an endless run and a playable tutorial, in 9 languages; every room proven to have a single solution by a solver. \n- Vibe-coded with Claude (Anthropic): I directed the game design, the rules and every UI/UX decision in conversation, while Claude and Claude Code agents wrote the code, ran the UI/UX audits and handled the architecture. \n- Deployed on its own domain with AWS S3, Cloudfront, Route 53 and AWS CDK through Github Actions.',
     startYear: 2026,
     endYear: 2026,
     skills: [

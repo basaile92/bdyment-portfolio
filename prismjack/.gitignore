@@ -1,9 +1,0 @@
-node_modules
-dist
-ios
-android
-.DS_Store
-dist-portfolio
-
-# Files set aside for deletion when syncing from Claude (never committed)
-_to_delete/

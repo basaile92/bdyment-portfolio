@@ -21,9 +21,9 @@ export const DESCRIPTION_COMMAND = 'description';
 export const HELP_COMMAND = 'help';
 export const HOBBIES_COMMAND = 'hobbies';
 export const LANGUAGES_COMMAND = 'languages';
+export const LUMIJACK_COMMAND = 'lumijack';
+export const LUMIJACK_URL = 'https://lumijack.com/';
 export const MISSIONS_COMMAND = 'missions';
-export const PRISMJACK_COMMAND = 'prismjack';
-export const PRISMJACK_PATH = '/prismjack/';
 export const PROJECTS_COMMAND = 'projects';
 export const SKILLS_COMMAND = 'skills';
 export const STUDIES_COMMAND = 'studies';
@@ -37,8 +37,8 @@ export const AVAILABLE_COMMANDS = [
   HELP_COMMAND,
   HOBBIES_COMMAND,
   LANGUAGES_COMMAND,
+  LUMIJACK_COMMAND,
   MISSIONS_COMMAND,
-  PRISMJACK_COMMAND,
   PROJECTS_COMMAND,
   SKILLS_COMMAND,
   STUDIES_COMMAND,
@@ -104,7 +104,7 @@ export class ConsoleService {
     this.executionByCommandName.set(HOBBIES_COMMAND, (parameter) =>
       this.formattedHobbyPort.getFormattedHobbies(parameter),
     );
-    this.executionByCommandName.set(PRISMJACK_COMMAND, () => this.prismjack());
+    this.executionByCommandName.set(LUMIJACK_COMMAND, () => this.lumijack());
     this.executionByCommandName.set(HELP_COMMAND, (parameter) => this.formattedHelpPort.getFormattedHelp(parameter));
     this.executionByCommandName.set(LANGUAGES_COMMAND, (parameter) =>
       this.formattedLanguagePort.getFormattedLanguages(parameter),
@@ -134,9 +134,9 @@ export class ConsoleService {
     return execution(parameter);
   }
 
-  private prismjack(): Promise<string> {
-    this.navigationPort.navigateTo(PRISMJACK_PATH);
-    return Promise.resolve("<div>Cutting the alarm wires... Opening <span class='subject'>Prismjack</span>.</div>");
+  private lumijack(): Promise<string> {
+    this.navigationPort.navigateTo(LUMIJACK_URL);
+    return Promise.resolve("<div>Cutting the alarm wires... Opening <span class='subject'>Lumijack</span>.</div>");
   }
 
   private async commandError(): Promise<string> {

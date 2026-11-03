@@ -143,11 +143,11 @@ export const commands = [
     ],
   },
   {
-    command: 'prismjack',
+    command: 'lumijack',
     usages: [
       {
         parameter: '',
-        description: 'break into the museum: play Prismjack, a deduction game made by Basile Dyment.',
+        description: 'break into the museum: play Lumijack, a deduction game made by Basile Dyment, at lumijack.com.',
       },
     ],
   },

@@ -75,20 +75,17 @@ export class CloudFrontStack extends cdk.Stack {
             }
         );
 
-        // Sub-folder sites (bdyment.com/prismjack) need their index.html: S3 has no directory index,
-        // and the 404 fallback below would otherwise serve the terminal instead of the game.
-        // The game's former address, /heist, redirects to /prismjack/.
+        // The game (Lumijack, formerly Prismjack) moved to its own site: its former address here,
+        // /prismjack, redirects there.
         const folderIndexFunction = new aws_cloudfront.Function(this, "BdymentPortfolioFolderIndexFunction", {
             runtime: aws_cloudfront.FunctionRuntime.JS_2_0,
             code: aws_cloudfront.FunctionCode.fromInline(`
 function handler(event) {
     var request = event.request;
     var uri = request.uri;
-    if (uri === '/heist' || uri.startsWith('/heist/') || uri === '/prismjack') {
-        return { statusCode: 301, statusDescription: 'Moved Permanently', headers: { location: { value: '/prismjack/' } } };
-    }
-    if (uri.startsWith('/prismjack/') && uri.endsWith('/')) {
-        request.uri = uri + 'index.html';
+    if (uri === '/prismjack' || uri.indexOf('/prismjack/') === 0) {
+        var rest = uri === '/prismjack' ? '' : uri.slice('/prismjack/'.length);
+        return { statusCode: 301, statusDescription: 'Moved Permanently', headers: { location: { value: 'https://lumijack.com/' + rest } } };
     }
     return request;
 }`),

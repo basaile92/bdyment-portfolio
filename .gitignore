@@ -6,8 +6,6 @@ node_modules/
 
 # build outputs
 front/build/
-prismjack/dist/
-prismjack/dist-portfolio/
 back/dist/
 infra/cdk.out/
 infra/lib/**/*.js
